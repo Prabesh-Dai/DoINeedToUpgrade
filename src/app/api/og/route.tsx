@@ -3,14 +3,15 @@ import { NextRequest } from "next/server";
 import { fetchGameDetails } from "@/lib/fetchGameDetails";
 import { GameRequirements } from "@/types";
 import {
+  OG,
   Constellation,
-  GridBg,
-  Glow,
   Logo,
+  Eyebrow,
   IconCPU,
   IconGPU,
   IconRAM,
   IconDisk,
+  IconArrowRight,
   getOgFonts,
 } from "@/lib/og";
 
@@ -25,7 +26,7 @@ const ICON_FOR: Record<
 };
 
 function shortenSpec(s: string | null | undefined, max = 32) {
-  if (!s) return "Not specified";
+  if (!s) return "Not listed";
   const t = s.replace(/\s+/g, " ").trim();
   return t.length > max ? t.slice(0, max - 1) + "…" : t;
 }
@@ -37,6 +38,61 @@ function rowsFor(reqs: GameRequirements | null) {
     { label: "RAM", value: shortenSpec(reqs?.ram, 22) },
     { label: "Disk", value: shortenSpec(reqs?.storage, 22) },
   ];
+}
+
+function RequirementsColumn({ title, rows }: { title: string; rows: { label: string; value: string }[] }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: OG.card,
+        border: `1px solid ${OG.border}`,
+        borderRadius: 6,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          padding: "14px 22px",
+          fontSize: 19,
+          fontWeight: 700,
+          letterSpacing: "-0.01em",
+          borderBottom: `1px solid ${OG.divider}`,
+        }}
+      >
+        {title}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "0 22px" }}>
+        {rows.map((r, i) => {
+          const Icon = ICON_FOR[r.label];
+          return (
+            <div
+              key={r.label}
+              style={{
+                // Rows share the column height so short cards don't leave a gap at the bottom
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                borderTop: i === 0 ? "none" : `1px solid ${OG.divider}`,
+              }}
+            >
+              <Icon size={18} color={OG.faint} />
+              <div style={{ display: "flex", fontSize: 15, color: OG.muted, fontWeight: 600, width: 46 }}>
+                {r.label}
+              </div>
+              <div style={{ display: "flex", fontSize: 17, color: OG.text, fontWeight: 600, flex: 1 }}>
+                {r.value}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -56,31 +112,16 @@ export async function GET(request: NextRequest) {
     (
       <div
         style={{
-          background: "#1A1F26",
+          background: OG.bg,
           width: "100%",
           height: "100%",
           position: "relative",
           display: "flex",
-          fontFamily: "Montserrat, sans-serif",
-          color: "#E5E7EB",
+          fontFamily: "Geist, sans-serif",
+          color: OG.text,
         }}
       >
-        <Constellation lineAlpha={0.13} particleAlpha={0.4} />
-        <GridBg tight />
-        <Glow
-          width={500}
-          height={500}
-          top={-260}
-          right={-280}
-          color="rgba(248,113,113,0.09)"
-        />
-        <Glow
-          width={460}
-          height={460}
-          bottom={-220}
-          left={-240}
-          color="rgba(96,165,250,0.10)"
-        />
+        <Constellation />
 
         <div
           style={{
@@ -97,200 +138,71 @@ export async function GET(request: NextRequest) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: 22,
+              marginBottom: 26,
             }}
           >
             <Logo />
-            <div
-              style={{
-                fontFamily: "monospace",
-                fontSize: 14,
-                color: "#94a3b8",
-                letterSpacing: 1.2,
-                display: "flex",
-              }}
-            >
-              COMPARISON · {gameLabel.toUpperCase()}
+            <div style={{ display: "flex", fontFamily: "Geist Mono, monospace" }}>
+              <Eyebrow size={14} color={OG.muted}>System requirements</Eyebrow>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              fontSize: 56,
-              fontWeight: 900,
-              letterSpacing: "-0.025em",
-              lineHeight: 1.05,
-              color: "#F1F5F9",
-              marginBottom: 22,
-            }}
-          >
-            Can your PC run {gameLabel}?
-          </div>
-
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "stretch",
-              gap: 24,
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                background: "rgba(36,43,51,0.7)",
-                border: "1px solid rgba(96,165,250,0.3)",
-                borderRadius: 14,
-                padding: "18px 22px",
-              }}
-            >
-              <div
+          <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 26 }}>
+            {game.headerImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={game.headerImage}
+                alt=""
+                width={184}
+                height={86}
                 style={{
-                  fontFamily: "monospace",
-                  fontSize: 13,
-                  color: "#60A5FA",
-                  letterSpacing: 1.4,
-                  marginBottom: 10,
-                  display: "flex",
+                  width: 184,
+                  height: 86,
+                  borderRadius: 4,
+                  objectFit: "cover",
+                  border: `1px solid ${OG.border}`,
                 }}
-              >
-                MINIMUM
-              </div>
-              {minRows.map((r) => {
-                const Icon = ICON_FOR[r.label];
-                return (
-                  <div
-                    key={r.label}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "8px 0",
-                      borderBottom: "1px solid rgba(148,163,184,0.1)",
-                    }}
-                  >
-                    <Icon size={18} color="#94a3b8" />
-                    <div
-                      style={{
-                        display: "flex",
-                        fontSize: 14,
-                        color: "#94a3b8",
-                        fontWeight: 600,
-                        width: 46,
-                      }}
-                    >
-                      {r.label}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        fontSize: 16,
-                        color: "#F1F5F9",
-                        fontWeight: 600,
-                        flex: 1,
-                      }}
-                    >
-                      {r.value}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
+              />
+            )}
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                flex: 1,
+                fontSize: 52,
+                fontWeight: 800,
+                letterSpacing: "-0.035em",
+                lineHeight: 1.05,
               }}
             >
+              Can your PC run {gameLabel}?
+            </div>
+          </div>
+
+          <div style={{ flex: 1, display: "flex", alignItems: "stretch", gap: 20 }}>
+            <RequirementsColumn title="Minimum" rows={minRows} />
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div
                 style={{
-                  fontFamily: "monospace",
-                  width: 48,
-                  height: 48,
-                  borderRadius: 9999,
-                  background: "rgba(15,20,28,0.9)",
-                  border: "1px solid rgba(148,163,184,0.3)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 4,
+                  background: OG.bg,
+                  border: `1px solid ${OG.border}`,
+                  fontFamily: "Geist Mono, monospace",
                   fontSize: 14,
-                  fontWeight: 700,
-                  color: "#94a3b8",
-                  letterSpacing: 1,
+                  fontWeight: 500,
+                  color: OG.muted,
                 }}
               >
                 VS
               </div>
             </div>
 
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                background: "rgba(36,43,51,0.7)",
-                border: "1px solid rgba(251,191,36,0.32)",
-                borderRadius: 14,
-                padding: "18px 22px",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: 13,
-                  color: "#FBBF24",
-                  letterSpacing: 1.4,
-                  marginBottom: 10,
-                  display: "flex",
-                }}
-              >
-                RECOMMENDED
-              </div>
-              {recRows.map((r) => {
-                const Icon = ICON_FOR[r.label];
-                return (
-                  <div
-                    key={r.label}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "8px 0",
-                      borderBottom: "1px solid rgba(148,163,184,0.1)",
-                    }}
-                  >
-                    <Icon size={18} color="#94a3b8" />
-                    <div
-                      style={{
-                        display: "flex",
-                        fontSize: 14,
-                        color: "#94a3b8",
-                        fontWeight: 600,
-                        width: 46,
-                      }}
-                    >
-                      {r.label}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        fontSize: 16,
-                        color: "#F1F5F9",
-                        fontWeight: 600,
-                        flex: 1,
-                      }}
-                    >
-                      {r.value}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <RequirementsColumn title="Recommended" rows={recRows} />
           </div>
 
           <div
@@ -298,7 +210,7 @@ export async function GET(request: NextRequest) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginTop: 18,
+              marginTop: 22,
             }}
           >
             <div
@@ -306,35 +218,23 @@ export async function GET(request: NextRequest) {
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                background: "rgba(56,189,248,0.14)",
-                border: "1px solid rgba(56,189,248,0.4)",
-                color: "#bae6fd",
+                background: OG.ink,
+                color: OG.inkContent,
                 fontWeight: 700,
-                fontSize: 17,
-                padding: "10px 18px",
-                borderRadius: 999,
+                fontSize: 18,
+                padding: "12px 20px",
+                borderRadius: 4,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  background: "#38BDF8",
-                  boxShadow: "0 0 12px #38BDF8",
-                }}
-              />
-              <div style={{ display: "flex" }}>
-                Check yours at doineedtoupgrade.com
-              </div>
+              <div style={{ display: "flex" }}>See if your PC can run it</div>
+              <IconArrowRight size={18} color={OG.inkContent} strokeWidth={2.5} />
             </div>
             <div
               style={{
-                fontFamily: "monospace",
-                fontSize: 15,
-                color: "#64748b",
                 display: "flex",
+                fontFamily: "Geist Mono, monospace",
+                fontSize: 16,
+                color: OG.faint,
               }}
             >
               doineedtoupgrade.com

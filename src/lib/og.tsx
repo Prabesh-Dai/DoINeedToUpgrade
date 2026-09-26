@@ -4,42 +4,59 @@ import path from "path";
 const W = 1200;
 const H = 630;
 
-const logoBuffer = readFileSync(
-  path.join(process.cwd(), "public", "icon-512.png")
-);
-const LOGO_DATA_URL = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+// Colors from the dark theme in tailwind.config.js
+export const OG = {
+  bg: "#0E0E10",
+  card: "#161618",
+  border: "rgba(237,237,239,0.10)",
+  divider: "rgba(237,237,239,0.07)",
+  text: "#EDEDEF",
+  muted: "#A1A1AA",
+  faint: "#71717A",
+  ink: "#F4F4F5",
+  inkContent: "#0E0E10",
+  success: "#30A46C",
+  successContent: "#06140D",
+  warning: "#F5A524",
+  error: "#E5484D",
+};
+
+// Monochrome logo (public/logo.svg), recolored for the dark background.
+// Only the tile is filled; the glyph is a mask cut-out, so it shows the card/page behind it.
+const logoSvg = readFileSync(path.join(process.cwd(), "public", "logo.svg"), "utf8")
+  .replace('<path fill="#000" mask=', `<path fill="${OG.text}" mask=`);
+const LOGO_DATA_URL = `data:image/svg+xml;base64,${Buffer.from(logoSvg).toString("base64")}`;
 
 type LoadedFont = {
   name: string;
   data: ArrayBuffer;
-  weight: 500 | 700 | 900;
+  weight: 500 | 600 | 700 | 800;
   style: "normal";
 };
 
+const FONT_FAMILIES: { name: string; query: string }[] = [
+  { name: "Geist", query: "Geist:wght@500;600;700;800" },
+  { name: "Geist Mono", query: "Geist+Mono:wght@500" },
+];
+
 async function fetchOgFonts(): Promise<LoadedFont[]> {
-  // Without a modern browser UA, Google Fonts serves truetype (TTF) — which
+  // Without a modern browser UA, Google Fonts serves truetype (TTF), which
   // Satori decodes natively. A Chrome/Safari UA would return woff2, which the
   // bundled Satori in this Next.js version can't decode.
   const css = await fetch(
-    "https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;900"
+    `https://fonts.googleapis.com/css2?${FONT_FAMILIES.map((f) => `family=${f.query}`).join("&")}`
   ).then((r) => r.text());
 
-  const byWeight = new Map<500 | 700 | 900, string>();
+  const out: LoadedFont[] = [];
   for (const block of css.split("@font-face").slice(1)) {
-    const weight = block.match(/font-weight:\s*(\d+)/)?.[1];
+    const family = block.match(/font-family:\s*'([^']+)'/)?.[1];
+    const weight = parseInt(block.match(/font-weight:\s*(\d+)/)?.[1] ?? "", 10);
     const url = block.match(
       /src:\s*url\((https:\/\/[^)]+)\)\s*format\('(?:truetype|opentype)'\)/
     )?.[1];
-    if (!weight || !url) continue;
-    const w = parseInt(weight, 10);
-    if (w !== 500 && w !== 700 && w !== 900) continue;
-    byWeight.set(w, url);
-  }
-
-  const out: LoadedFont[] = [];
-  for (const [weight, url] of byWeight.entries()) {
+    if (!family || !url || ![500, 600, 700, 800].includes(weight)) continue;
     const data = await fetch(url).then((r) => r.arrayBuffer());
-    out.push({ name: "Montserrat", data, weight, style: "normal" });
+    out.push({ name: family, data, weight: weight as LoadedFont["weight"], style: "normal" });
   }
   return out;
 }
@@ -92,9 +109,10 @@ function buildNetwork(w: number, h: number, density: number, connect: number) {
 
 const NETWORK = buildNetwork(W, H, 11000, 150);
 
+// Same particle network as the site background
 export function Constellation({
-  lineAlpha = 0.13,
-  particleAlpha = 0.4,
+  lineAlpha = 0.1,
+  particleAlpha = 0.3,
 }: {
   lineAlpha?: number;
   particleAlpha?: number;
@@ -113,7 +131,7 @@ export function Constellation({
           y1={l.y1}
           x2={l.x2}
           y2={l.y2}
-          stroke={`rgba(148,163,184,${(l.a * lineAlpha).toFixed(3)})`}
+          stroke={`rgba(161,161,170,${(l.a * lineAlpha).toFixed(3)})`}
           strokeWidth={0.7}
         />
       ))}
@@ -123,194 +141,130 @@ export function Constellation({
           cx={p.x}
           cy={p.y}
           r={1.6}
-          fill={`rgba(148,163,184,${particleAlpha})`}
+          fill={`rgba(161,161,170,${particleAlpha})`}
         />
       ))}
     </svg>
   );
 }
 
-export function GridBg({ tight = false }: { tight?: boolean }) {
-  const alpha = tight ? 0.05 : 0.06;
-  const size = tight ? 32 : 48;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        backgroundImage: `linear-gradient(rgba(148,163,184,${alpha}) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,${alpha}) 1px, transparent 1px)`,
-        backgroundSize: `${size}px ${size}px`,
-      }}
-    />
-  );
-}
-
-export function Glow({
-  width,
-  height,
-  color,
-  top,
-  left,
-  right,
-  bottom,
-}: {
-  width: number;
-  height: number;
-  color: string;
-  top?: number;
-  left?: number;
-  right?: number;
-  bottom?: number;
-}) {
-  // Satori's css-to-react-native trims every style value; passing
-  // `top: undefined` etc. blows up. Build the style object with only the
-  // position keys we actually have.
-  const style: Record<string, string | number> = {
-    position: "absolute",
-    display: "flex",
-    width,
-    height,
-    background: `radial-gradient(circle, ${color} 0%, transparent 55%)`,
-    borderRadius: 9999,
-  };
-  if (typeof top === "number") style.top = top;
-  if (typeof left === "number") style.left = left;
-  if (typeof right === "number") style.right = right;
-  if (typeof bottom === "number") style.bottom = bottom;
-  return <div style={style} />;
-}
-
-export function Logo() {
+export function Logo({ size = 36 }: { size?: number }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={LOGO_DATA_URL}
-        alt=""
-        width={36}
-        height={36}
-        style={{ width: 36, height: 36, borderRadius: 8 }}
-      />
+      <img src={LOGO_DATA_URL} alt="" width={size} height={size} style={{ width: size, height: size }} />
       <div
         style={{
+          display: "flex",
           fontWeight: 700,
           fontSize: 22,
-          letterSpacing: "-0.01em",
-          color: "#E5E7EB",
-          display: "flex",
+          letterSpacing: "-0.015em",
         }}
       >
-        Do I Need To Upgrade?
+        <span style={{ color: OG.muted, fontWeight: 600 }}>Do I Need To&nbsp;</span>
+        <span style={{ color: OG.text }}>Upgrade?</span>
       </div>
     </div>
   );
 }
 
-export function IconCheck({ size = 24, color = "currentColor" }) {
+// Small uppercase label, like `.eyebrow` in globals.css
+export function Eyebrow({ children, color = OG.faint, size = 13 }: { children: React.ReactNode; color?: string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="11" stroke={color} strokeWidth="2" />
-      <path
-        d="M7 12.5l3.2 3.2L17 9"
-        stroke={color}
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div
+      style={{
+        display: "flex",
+        fontSize: size,
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
-export function IconCPU({ size = 22, color = "currentColor" }) {
+// --- Icons: Lucide shapes (same set as the site), drawn at a bold stroke ---
+
+type IconNode = { tag: "rect" | "path" | "line"; attr: Record<string, string> };
+
+const LUCIDE: Record<string, IconNode[]> = {
+  cpu: [
+    { tag: "rect", attr: { width: "16", height: "16", x: "4", y: "4", rx: "2" } },
+    { tag: "rect", attr: { width: "6", height: "6", x: "9", y: "9", rx: "1" } },
+    ...["M15 2v2", "M15 20v2", "M2 15h2", "M2 9h2", "M20 15h2", "M20 9h2", "M9 2v2", "M9 20v2"].map(
+      (d) => ({ tag: "path" as const, attr: { d } })
+    ),
+  ],
+  monitor: [
+    { tag: "rect", attr: { width: "20", height: "14", x: "2", y: "3", rx: "2" } },
+    { tag: "line", attr: { x1: "8", x2: "16", y1: "21", y2: "21" } },
+    { tag: "line", attr: { x1: "12", x2: "12", y1: "17", y2: "21" } },
+  ],
+  memory: [
+    ...["M6 19v-3", "M10 19v-3", "M14 19v-3", "M18 19v-3", "M8 11V9", "M16 11V9", "M12 11V9", "M2 15h20"].map(
+      (d) => ({ tag: "path" as const, attr: { d } })
+    ),
+    { tag: "path", attr: { d: "M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1.1a2 2 0 0 0 0 3.837V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-5.1a2 2 0 0 0 0-3.837Z" } },
+  ],
+  disk: [
+    { tag: "line", attr: { x1: "22", x2: "2", y1: "12", y2: "12" } },
+    { tag: "path", attr: { d: "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" } },
+    { tag: "line", attr: { x1: "6", x2: "6.01", y1: "16", y2: "16" } },
+    { tag: "line", attr: { x1: "10", x2: "10.01", y1: "16", y2: "16" } },
+  ],
+  check: [{ tag: "path", attr: { d: "M20 6 9 17l-5-5" } }],
+  arrowRight: [
+    { tag: "path", attr: { d: "M5 12h14" } },
+    { tag: "path", attr: { d: "m12 5 7 7-7 7" } },
+  ],
+};
+
+type IconProps = { size?: number; color?: string; strokeWidth?: number };
+
+function LucideIcon({ nodes, size = 22, color = OG.muted, strokeWidth = 2.25 }: IconProps & { nodes: IconNode[] }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <rect
-        x="6"
-        y="6"
-        width="12"
-        height="12"
-        rx="2"
-        stroke={color}
-        strokeWidth="1.6"
-      />
-      <rect
-        x="9"
-        y="9"
-        width="6"
-        height="6"
-        rx="1"
-        stroke={color}
-        strokeWidth="1.4"
-      />
-      {[3, 8, 13, 18].map((p) => (
-        <g key={p}>
-          <line x1={p} y1="2" x2={p} y2="6" stroke={color} strokeWidth="1.4" />
-          <line x1={p} y1="18" x2={p} y2="22" stroke={color} strokeWidth="1.4" />
-          <line x1="2" y1={p} x2="6" y2={p} stroke={color} strokeWidth="1.4" />
-          <line x1="18" y1={p} x2="22" y2={p} stroke={color} strokeWidth="1.4" />
-        </g>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {nodes.map(({ tag: Tag, attr }, i) => (
+        <Tag key={i} {...attr} />
       ))}
     </svg>
   );
 }
 
-export function IconGPU({ size = 22, color = "currentColor" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <rect
-        x="2"
-        y="7"
-        width="20"
-        height="10"
-        rx="2"
-        stroke={color}
-        strokeWidth="1.6"
-      />
-      <circle cx="8" cy="12" r="2.2" stroke={color} strokeWidth="1.4" />
-      <circle cx="16" cy="12" r="2.2" stroke={color} strokeWidth="1.4" />
-      <line x1="2" y1="19" x2="6" y2="19" stroke={color} strokeWidth="1.6" />
-    </svg>
-  );
-}
+export const IconCPU = (p: IconProps) => <LucideIcon nodes={LUCIDE.cpu} {...p} />;
+export const IconGPU = (p: IconProps) => <LucideIcon nodes={LUCIDE.monitor} {...p} />;
+export const IconRAM = (p: IconProps) => <LucideIcon nodes={LUCIDE.memory} {...p} />;
+export const IconDisk = (p: IconProps) => <LucideIcon nodes={LUCIDE.disk} {...p} />;
+export const IconCheck = (p: IconProps) => <LucideIcon nodes={LUCIDE.check} {...p} />;
+export const IconArrowRight = (p: IconProps) => <LucideIcon nodes={LUCIDE.arrowRight} {...p} />;
 
-export function IconRAM({ size = 22, color = "currentColor" }) {
+// Solid square check, like the "Meets" mark in the component breakdown
+export function StatusCheck({ size = 20 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path d="M2 8h20v8H2z" stroke={color} strokeWidth="1.6" />
-      <path
-        d="M5 16v2M9 16v2M15 16v2M19 16v2"
-        stroke={color}
-        strokeWidth="1.4"
-      />
-      <rect x="5" y="10" width="3" height="4" stroke={color} strokeWidth="1.2" />
-      <rect
-        x="10.5"
-        y="10"
-        width="3"
-        height="4"
-        stroke={color}
-        strokeWidth="1.2"
-      />
-      <rect x="16" y="10" width="3" height="4" stroke={color} strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-export function IconDisk({ size = 22, color = "currentColor" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="16"
-        rx="2"
-        stroke={color}
-        strokeWidth="1.6"
-      />
-      <circle cx="12" cy="12" r="4" stroke={color} strokeWidth="1.4" />
-      <circle cx="12" cy="12" r="1" fill={color} />
-    </svg>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+        borderRadius: 3,
+        background: OG.success,
+      }}
+    >
+      <IconCheck size={Math.round(size * 0.7)} color={OG.successContent} strokeWidth={3.5} />
+    </div>
   );
 }

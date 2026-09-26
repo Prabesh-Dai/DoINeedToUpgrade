@@ -1,14 +1,15 @@
 import { ImageResponse } from "next/og";
 import {
+  OG,
   Constellation,
-  GridBg,
-  Glow,
   Logo,
+  Eyebrow,
   IconCheck,
   IconCPU,
   IconGPU,
   IconRAM,
   IconDisk,
+  StatusCheck,
   getOgFonts,
 } from "@/lib/og";
 
@@ -29,38 +30,23 @@ export default async function Image() {
     (
       <div
         style={{
-          background: "#1A1F26",
+          background: OG.bg,
           width: "100%",
           height: "100%",
           position: "relative",
           display: "flex",
-          fontFamily: "Montserrat, sans-serif",
-          color: "#E5E7EB",
+          fontFamily: "Geist, sans-serif",
+          color: OG.text,
         }}
       >
-        <Constellation lineAlpha={0.13} particleAlpha={0.4} />
-        <GridBg />
-        <Glow
-          width={520}
-          height={520}
-          top={-260}
-          left={-300}
-          color="rgba(96,165,250,0.12)"
-        />
-        <Glow
-          width={380}
-          height={380}
-          bottom={-200}
-          right={-180}
-          color="rgba(74,222,128,0.10)"
-        />
+        <Constellation />
 
         <div
           style={{
             position: "relative",
             width: "100%",
             height: "100%",
-            padding: "56px 60px",
+            padding: "56px 64px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
@@ -68,22 +54,16 @@ export default async function Image() {
         >
           <Logo />
 
-          <div style={{ display: "flex", alignItems: "center", gap: 48 }}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-              }}
-            >
+          <div style={{ display: "flex", alignItems: "center", gap: 56 }}>
+            {/* Headline */}
+            <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
               <div
                 style={{
-                  fontSize: 22,
-                  color: "#94a3b8",
-                  fontWeight: 500,
-                  marginBottom: 12,
-                  letterSpacing: 0.4,
                   display: "flex",
+                  fontSize: 22,
+                  color: OG.muted,
+                  fontWeight: 500,
+                  marginBottom: 14,
                 }}
               >
                 Before you buy that GPU…
@@ -92,170 +72,135 @@ export default async function Image() {
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  fontSize: 76,
-                  fontWeight: 900,
-                  lineHeight: 1.02,
-                  letterSpacing: "-0.025em",
-                  color: "#F1F5F9",
+                  fontSize: 84,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  letterSpacing: "-0.04em",
                 }}
               >
-                <div style={{ display: "flex" }}>Do I Need</div>
-                <div style={{ display: "flex" }}>
-                  <span style={{ display: "flex" }}>To&nbsp;</span>
-                  <span
-                    style={{
-                      display: "flex",
-                      background:
-                        "linear-gradient(90deg, #60A5FA, #38BDF8 60%, #4ADE80)",
-                      backgroundClip: "text",
-                      color: "transparent",
-                    }}
-                  >
-                    Upgrade?
-                  </span>
-                </div>
+                <div style={{ display: "flex", color: OG.muted }}>Do I Need To</div>
+                <div style={{ display: "flex", color: OG.text }}>Upgrade?</div>
               </div>
               <div
                 style={{
+                  display: "flex",
                   fontSize: 22,
-                  color: "#cbd5e1",
-                  marginTop: 18,
+                  color: "#D4D4D8",
+                  marginTop: 22,
                   lineHeight: 1.4,
                   maxWidth: 460,
-                  display: "flex",
                 }}
               >
-                Compare your PC against any Steam game&apos;s requirements,
-                instantly.
+                Compare your PC against any Steam game&apos;s requirements, instantly.
               </div>
             </div>
 
+            {/* Sample result, styled like the results screen */}
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                flex: 1,
-                background: "rgba(36, 43, 51, 0.85)",
-                border: "1px solid rgba(148,163,184,0.22)",
-                borderRadius: 16,
-                padding: "20px 22px",
-                boxShadow:
-                  "0 30px 80px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(56,189,248,0.05)",
-                transform: "rotate(-1.5deg)",
+                width: 500,
+                background: OG.card,
+                border: `1px solid ${OG.border}`,
+                borderRadius: 6,
+                overflow: "hidden",
+                boxShadow: "0 30px 80px -24px rgba(0,0,0,0.7)",
               }}
             >
+              {/* Game + FPS */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
-                  marginBottom: 14,
+                  gap: 16,
+                  padding: "18px 20px",
+                  borderBottom: `1px solid ${OG.divider}`,
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg"
-                  alt="Cyberpunk 2077"
-                  width={46}
-                  height={46}
-                  style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 8,
-                    objectFit: "cover",
-                    border: "1px solid rgba(148,163,184,0.25)",
-                  }}
+                  src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg"
+                  alt=""
+                  width={120}
+                  height={56}
+                  style={{ width: 120, height: 56, borderRadius: 4, objectFit: "cover" }}
                 />
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "#94a3b8",
-                      fontWeight: 500,
-                      display: "flex",
-                    }}
-                  >
-                    Checking
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 19,
-                      fontWeight: 700,
-                      color: "#E5E7EB",
-                      display: "flex",
-                    }}
-                  >
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 4 }}>
+                  <Eyebrow size={11}>Results for</Eyebrow>
+                  <div style={{ display: "flex", fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>
                     Cyberpunk 2077
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    paddingLeft: 18,
+                    borderLeft: `1px solid ${OG.border}`,
+                  }}
+                >
+                  <Eyebrow size={11}>Est. FPS</Eyebrow>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                    <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>84</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: OG.faint }}>fps</span>
                   </div>
                 </div>
               </div>
 
+              {/* Verdict */}
+              <div style={{ display: "flex", height: 3, background: OG.success }} />
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  background: "rgba(74,222,128,0.18)",
-                  border: "1px solid rgba(74,222,128,0.45)",
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  marginBottom: 14,
+                  gap: 14,
+                  padding: "16px 20px",
+                  borderBottom: `1px solid ${OG.divider}`,
                 }}
               >
-                <IconCheck size={22} color="#4ADE80" />
                 <div
                   style={{
-                    fontWeight: 700,
-                    fontSize: 17,
-                    color: "#bbf7d0",
                     display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 40,
+                    height: 40,
+                    borderRadius: 4,
+                    background: OG.success,
                   }}
                 >
-                  You&apos;re good to go: meets recommended
+                  <IconCheck size={24} color={OG.successContent} strokeWidth={3} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <Eyebrow size={11}>Ready to play</Eyebrow>
+                  <div style={{ display: "flex", fontSize: 19, fontWeight: 700, letterSpacing: "-0.015em" }}>
+                    You&apos;re good to go. No upgrade needed!
+                  </div>
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                {SPEC_ROWS.map(({ Icon, label, value }) => (
+              {/* Components */}
+              <div style={{ display: "flex", flexDirection: "column", padding: "8px 20px 12px" }}>
+                {SPEC_ROWS.map(({ Icon, label, value }, i) => (
                   <div
                     key={label}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: 14,
-                      fontSize: 15,
+                      padding: "9px 0",
+                      borderTop: i === 0 ? "none" : `1px solid ${OG.divider}`,
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        color: "#94a3b8",
-                        fontWeight: 600,
-                        width: 80,
-                      }}
-                    >
-                      <Icon size={18} color="#94a3b8" />
-                      <div style={{ display: "flex" }}>{label}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, width: 86 }}>
+                      <Icon size={18} color={OG.faint} />
+                      <div style={{ display: "flex", fontSize: 15, fontWeight: 600, color: OG.muted }}>{label}</div>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        color: "#E5E7EB",
-                        fontWeight: 500,
-                        flex: 1,
-                      }}
-                    >
-                      {value}
-                    </div>
-                    <IconCheck size={18} color="#4ADE80" />
+                    <div style={{ display: "flex", flex: 1, fontSize: 16, fontWeight: 600 }}>{value}</div>
+                    <StatusCheck size={20} />
                   </div>
                 ))}
               </div>
@@ -264,11 +209,11 @@ export default async function Image() {
 
           <div
             style={{
-              fontFamily: "monospace",
-              fontSize: 18,
-              color: "#64748b",
-              letterSpacing: 0.6,
               display: "flex",
+              fontFamily: "Geist Mono, monospace",
+              fontSize: 18,
+              color: OG.faint,
+              letterSpacing: "0.02em",
             }}
           >
             doineedtoupgrade.com
