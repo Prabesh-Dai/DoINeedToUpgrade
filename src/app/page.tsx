@@ -13,7 +13,7 @@ export default function Page() {
       </div>
 
       <section className="mx-auto mb-10 mt-8 w-full max-w-3xl border-t border-base-content/10 pt-8 leading-relaxed text-base-content/60">
-        <h2 className="text-sm font-semibold text-base-content/80">
+        <h2 className="text-base font-semibold text-base-content/80">
           Can I run it? Check any Steam game against your PC.
         </h2>
         <p className="mt-2 text-sm">
@@ -24,7 +24,7 @@ export default function Page() {
           parts still get a fair comparison. Works on Windows, macOS and Linux.
         </p>
 
-        <h3 className="mt-6 text-sm font-semibold text-base-content/80">Popular games to check</h3>
+        <h3 className="mt-6 text-base font-semibold text-base-content/80">Popular games to check</h3>
         <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 md:grid-cols-3">
           {featured.map((g) => (
             <li key={g.appid} className="min-w-0">
