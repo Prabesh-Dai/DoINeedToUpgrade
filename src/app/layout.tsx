@@ -8,6 +8,7 @@ import Logo from "@/components/Logo";
 import { StructuredData } from "@/components/StructuredData";
 import GeometricBackground from "@/components/GeometricBackground";
 import PerformanceHint from "@/components/PerformanceHint";
+import { SPLASH_SCREENS } from "@/lib/splashScreens";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
@@ -50,6 +51,12 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Upgrade?",
+    // iOS launch screens when opened from the home screen (see src/app/splash)
+    startupImage: SPLASH_SCREENS.map(({ file, media }) => ({ url: `/splash/${file}`, media })),
+  },
   verification: {
     google: "gqGgjLe8m4yTdxE4FxpwnwdTOSG4pvZhfAHhg7IVGJ4",
   },

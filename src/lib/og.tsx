@@ -148,22 +148,33 @@ export function Constellation({
   );
 }
 
+export function LogoMark({ size }: { size: number }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={LOGO_DATA_URL} alt="" width={size} height={size} style={{ width: size, height: size }} />;
+}
+
+// Two-tone wordmark, same as the site header
+export function Wordmark({ fontSize = 22 }: { fontSize?: number }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        fontWeight: 700,
+        fontSize,
+        letterSpacing: "-0.015em",
+      }}
+    >
+      <span style={{ color: OG.muted, fontWeight: 600 }}>Do I Need To&nbsp;</span>
+      <span style={{ color: OG.text }}>Upgrade?</span>
+    </div>
+  );
+}
+
 export function Logo({ size = 36 }: { size?: number }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={LOGO_DATA_URL} alt="" width={size} height={size} style={{ width: size, height: size }} />
-      <div
-        style={{
-          display: "flex",
-          fontWeight: 700,
-          fontSize: 22,
-          letterSpacing: "-0.015em",
-        }}
-      >
-        <span style={{ color: OG.muted, fontWeight: 600 }}>Do I Need To&nbsp;</span>
-        <span style={{ color: OG.text }}>Upgrade?</span>
-      </div>
+      <LogoMark size={size} />
+      <Wordmark />
     </div>
   );
 }
