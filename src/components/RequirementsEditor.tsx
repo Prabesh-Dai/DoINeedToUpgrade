@@ -95,56 +95,44 @@ export default function RequirementsEditor({
     );
   }
 
+  const columns = [
+    { title: "Minimum", values: min, update: updateMin },
+    { title: "Recommended", values: rec, update: updateRec },
+  ];
+
   return (
-    <div className="card bg-base-100/80 backdrop-blur-sm shadow-sm w-full max-w-full overflow-hidden">
-      <div className="card-body">
-        <div className="flex items-center justify-between">
-          <h3 className="card-title text-lg">Game Requirements</h3>
+    <section className="card w-full max-w-full overflow-visible">
+      <div className="card-body gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Game requirements</h2>
+            <p className="mt-1 text-sm text-base-content/60">Edit these if the listed specs look off.</p>
+          </div>
           <button className="btn btn-ghost btn-sm" onClick={clearAll}>
-            Clear All
+            Clear all
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-          {/* Minimum column */}
-          <div>
-            <h4 className="font-semibold mb-2 text-sm opacity-70">Minimum</h4>
-            <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-6 md:grid-cols-2">
+          {columns.map(({ title, values, update }) => (
+            <div key={title} className="flex flex-col gap-3">
+              <h3 className="eyebrow border-b border-base-content/[0.08] pb-2">{title}</h3>
               {FIELDS.map(({ key, label }) => (
-                <div key={key}>
-                  <label className="label py-0.5">
-                    <span className="label-text text-xs">{label}</span>
-                  </label>
-                  {renderField(key, label, min[key], (v) => updateMin(key, v))}
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-base-content/60">{label}</label>
+                  {renderField(key, label, values[key], (v) => update(key, v))}
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Recommended column */}
-          <div>
-            <h4 className="font-semibold mb-2 text-sm opacity-70">
-              Recommended
-            </h4>
-            <div className="flex flex-col gap-2">
-              {FIELDS.map(({ key, label }) => (
-                <div key={key}>
-                  <label className="label py-0.5">
-                    <span className="label-text text-xs">{label}</span>
-                  </label>
-                  {renderField(key, label, rec[key], (v) => updateRec(key, v))}
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="flex justify-end mt-4">
-          <button className="btn btn-primary btn-sm" onClick={onSubmit}>
-            Apply Changes
+        <div className="flex justify-end">
+          <button className="btn btn-primary btn-sm px-5" onClick={onSubmit}>
+            Apply changes
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

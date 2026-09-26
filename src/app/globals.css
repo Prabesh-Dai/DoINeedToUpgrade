@@ -3,18 +3,75 @@
 @tailwind utilities;
 
 @layer base {
-  body { @apply antialiased; }
+  body {
+    @apply antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
   main { scrollbar-width: none; }
   main::-webkit-scrollbar { display: none; }
+  ::selection { background: oklch(var(--p) / 0.3); }
+  h1, h2, h3 { letter-spacing: -0.015em; }
+  :focus-visible { outline: 2px solid oklch(var(--p)); outline-offset: 2px; }
+
+  /* Native controls (scrollbars, pickers) follow the active theme */
+  [data-theme="dark"] { color-scheme: dark; }
+  [data-theme="light"] { color-scheme: light; }
+
+  /* Hide native number spinners; arrow keys still step the value */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
+
 @layer components {
-  .card { @apply shadow-sm border border-base-300; }
-  .input-bordered { @apply border-base-300 bg-base-100; }
-  /* Tighter card padding on mobile so content fits within narrow viewports */
-  .card-body { padding: 1rem; }
-  @media (min-width: 640px) {
-    .card-body { padding: 2rem; }
+  /* Surfaces */
+  .card {
+    @apply bg-base-100 border border-base-content/[0.08] shadow-soft;
   }
+  .surface {
+    @apply bg-base-100/85 backdrop-blur-md border border-base-content/[0.08] rounded-box shadow-soft;
+  }
+  .surface-muted {
+    @apply bg-base-content/[0.03] border border-base-content/[0.06] rounded-box;
+  }
+
+  /* Tighter card padding on mobile so content fits within narrow viewports */
+  .card-body { padding: 1.25rem; }
+  @media (min-width: 640px) {
+    .card-body { padding: 1.75rem; }
+  }
+
+  /* Inputs */
+  .input-bordered {
+    @apply border-base-content/[0.12] bg-base-200/60;
+  }
+  .input {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .input:focus,
+  .input:focus-within {
+    outline: none;
+    border-color: oklch(var(--p));
+    box-shadow: 0 0 0 3px oklch(var(--p) / 0.12);
+    @apply bg-base-100;
+  }
+
+  .btn { @apply font-semibold normal-case; }
+
+  .kbd {
+    @apply bg-base-content/[0.06] border-base-content/10 font-sans;
+    border-bottom-width: 1px;
+  }
+
+  /* Small uppercase label above values */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-base-content/50;
+  }
+
+  .toast-card {
+    @apply flex items-center gap-3 rounded border border-base-content/10 bg-base-100/95 backdrop-blur-md px-4 py-3 text-sm shadow-lift;
+  }
+
   /* daisyUI's .collapse uses CSS grid where items default to min-width:auto,
      which lets wide unwrappable content (e.g. long commands) push the grid
      wider than its container. Force grid items to shrink. */
@@ -25,12 +82,21 @@
   .collapse > .collapse-content {
     min-width: 0;
   }
-}
+  .collapse:focus-visible,
+  .collapse:has(> input[type="checkbox"]:focus-visible) {
+    outline: 2px solid oklch(var(--bc) / 0.25);
+    outline-offset: 2px;
+  }
 
-.steps .step::before {
-  font-weight: 900;
-  font-size: 1.1rem;
-  transform: scale(1.15);
+  /* Solid, compact label chip */
+  .chip {
+    @apply inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide;
+  }
+
+  /* Neutral notice with a solid status stripe */
+  .notice {
+    @apply flex gap-3 rounded border border-base-content/10 border-l-[3px] bg-base-content/[0.03] px-3.5 py-3 text-sm text-base-content/80;
+  }
 }
 
 @keyframes fadeIn {
@@ -38,29 +104,25 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn {
-  animation: fadeIn 0.25s ease-out;
+  animation: fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes toastSlideIn {
-  0%   { transform: translateX(calc(100% + 1rem)); opacity: 0; }
-  50%  { transform: translateX(-8px); opacity: 1; }
-  70%  { transform: translateX(4px); }
-  85%  { transform: translateX(-2px); }
-  100% { transform: translateX(0); }
+  0%   { transform: translateY(-8px) scale(0.98); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 @keyframes toastSlideOut {
-  0%   { transform: translateX(0); opacity: 1; }
-  20%  { transform: translateX(-8px); opacity: 1; }
-  100% { transform: translateX(calc(100% + 1rem)); opacity: 0; }
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-8px) scale(0.98); opacity: 0; }
 }
 
 .animate-toast-in {
-  animation: toastSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: toastSlideIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-toast-out {
-  animation: toastSlideOut 0.4s ease-in forwards;
+  animation: toastSlideOut 0.2s ease-in forwards;
 }
 
 @keyframes shake {
@@ -76,11 +138,21 @@
 }
 
 @keyframes dropdownIn {
-  from { opacity: 0; transform: translateY(-4px) scale(0.95); }
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .animate-dropdownIn {
   animation: dropdownIn 0.15s ease-out;
+  transform-origin: top right;
+}
+
+@keyframes growX {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.animate-growX {
+  animation: growX 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left;
 }
 
 [data-reduce-motion="true"] *,
@@ -92,22 +164,16 @@
 
 .scrollbar-subtle {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--bc) / 0.2) transparent;
+  scrollbar-color: oklch(var(--bc) / 0.2) transparent;
 }
 .scrollbar-subtle::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar-subtle::-webkit-scrollbar-track { background: transparent; }
 .scrollbar-subtle::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--bc) / 0.2);
+  background-color: oklch(var(--bc) / 0.2);
   border-radius: 8px;
 }
 .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--bc) / 0.35);
+  background-color: oklch(var(--bc) / 0.35);
 }
 .scrollbar-subtle::-webkit-scrollbar-button { display: none; }
 .scrollbar-subtle::-webkit-scrollbar-corner { background: transparent; }
-
-@keyframes scroll-text {
-  0%, 5%   { transform: translateX(0); }
-  45%, 55% { transform: translateX(var(--scroll-distance)); }
-  95%, 100% { transform: translateX(0); }
-}

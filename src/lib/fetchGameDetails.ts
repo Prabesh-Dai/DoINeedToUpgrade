@@ -16,7 +16,11 @@ export async function fetchGameDetails(appid: string): Promise<GameDetails | nul
     if (!res.ok) return null;
 
     const data = await res.json();
-    const appData = data[appid];
+    // Steam sometimes keys the response by a different id (e.g. a package/DLC id)
+    // than the one requested, so fall back to matching on data.steam_appid.
+    const appData = data[appid]
+      ?? Object.values(data as Record<string, { success?: boolean; data?: { steam_appid?: number } }>)
+        .find((entry) => String(entry?.data?.steam_appid) === appid);
 
     if (!appData?.success) return null;
 

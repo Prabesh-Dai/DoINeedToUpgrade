@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { GameDetails, GameRequirements, VerdictResult, ComparisonItem, Platform, FpsEstimate } from "@/types";
 import ComparisonResult from "@/components/ComparisonResult";
 import RequirementsEditor from "@/components/RequirementsEditor";
-import { HiCheckCircle, HiXCircle, HiQuestionMarkCircle, HiInformationCircle, HiChevronDown, HiExclamation, HiEmojiSad } from "react-icons/hi";
+import VerdictPanel from "@/components/VerdictPanel";
+import FpsStat from "@/components/FpsStat";
+import { LuInfo, LuChevronDown, LuSearch, LuPencil, LuSlidersHorizontal, LuGamepad2 } from "react-icons/lu";
 
 const platformLabels: Record<Platform, string> = {
   windows: "Windows",
@@ -29,116 +31,6 @@ interface Props {
   fpsEstimate?: FpsEstimate | null;
 }
 
-const verdictIcons = {
-  pass: HiCheckCircle,
-  minimum: HiInformationCircle,
-  fail: HiXCircle,
-  unknown: HiQuestionMarkCircle,
-} as const;
-
-function fpsColor(mid: number): string {
-  if (mid < 30) return "text-error";
-  if (mid < 60) return "text-warning";
-  if (mid < 90) return "text-success";
-  return "text-info";
-}
-
-function AnimatedFpsNumber({ target }: { target: number }) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    setCount(0);
-    if (target <= 0) return;
-    const duration = 900;
-    const startTime = performance.now();
-    let rafId: number;
-
-    function tick(now: number) {
-      const elapsed = now - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      const eased = 1 - (1 - t) ** 3;
-      setCount(Math.round(eased * target));
-      if (t < 1) rafId = requestAnimationFrame(tick);
-    }
-
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [target]);
-
-  return (
-    <div className="absolute inset-y-0 right-2 sm:right-3 flex flex-col justify-center items-end select-none pointer-events-none opacity-[0.18] text-base-content">
-      <div className="text-[10px] sm:text-sm font-bold tracking-[0.2em] uppercase leading-none mb-0.5">~FPS</div>
-      <div className="text-4xl sm:text-6xl font-black tabular-nums leading-none">{count}</div>
-    </div>
-  );
-}
-
-function VerdictCard({ result }: { result: VerdictResult }) {
-  const [open, setOpen] = useState(false);
-  const Icon = verdictIcons[result.verdict];
-  const hasUpgrades = result.upgradeItems.length > 0 && result.verdict !== "pass";
-  const isFail = result.verdict === "fail";
-
-  useEffect(() => {
-    setOpen(false);
-  }, [result.verdict, result.title]);
-
-  const cardColors = {
-    pass: "bg-success/20 text-success",
-    minimum: "bg-info/20 text-info",
-    fail: "bg-error/20 text-error",
-    unknown: "bg-warning/20 text-warning",
-  } as const;
-
-  const contentColors = {
-    pass: "bg-success/10",
-    minimum: "bg-info/10",
-    fail: "bg-error/10",
-    unknown: "bg-warning/10",
-  } as const;
-
-  return (
-    <div className={`collapse rounded-box ${cardColors[result.verdict]} cursor-pointer hover:brightness-95 transition-[filter]`}>
-      <input type="checkbox" onChange={(e) => setOpen(e.target.checked)} />
-      <div className="collapse-title flex items-center justify-between gap-3 !min-h-0 !py-4 sm:!py-5 !px-3 sm:!px-4">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <Icon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
-          <h3 className="text-sm sm:text-base font-bold break-words">{result.title}</h3>
-        </div>
-        <div className="flex items-center gap-1 opacity-70 text-xs font-medium shrink-0">
-          <span className="hidden sm:inline">{open ? "Hide" : "Show"} details</span>
-          <HiChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
-        </div>
-      </div>
-      <div className={`collapse-content px-3 sm:px-4 ${contentColors[result.verdict]} rounded-b-box text-base-content`}>
-        <p className="text-sm text-base-content/70 pt-3">{result.description}</p>
-        {hasUpgrades && (
-          <div className="overflow-x-auto scrollbar-subtle mt-3 -mx-3 sm:mx-0 px-3 sm:px-0">
-            <table className="table table-xs sm:table-sm w-full [&_tr]:border-base-content/10">
-              <thead>
-                <tr className="text-base-content/40">
-                  <th>Component</th>
-                  <th>Your Current</th>
-                  <th>{isFail ? "Required" : "Recommended"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.upgradeItems.map((item) => (
-                  <tr key={item.component} className="text-base-content/70">
-                    <td className="font-semibold">{item.component}</td>
-                    <td>{item.current}</td>
-                    <td>{item.required}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function StepResults({
   game,
   verdict,
@@ -156,150 +48,117 @@ export default function StepResults({
   fpsEstimate,
 }: Props) {
   const [showEditor, setShowEditor] = useState(false);
-  const [showHiddenFps, setShowHiddenFps] = useState(false);
 
-  const hasEstimate = fpsEstimate && fpsEstimate.confidence !== "none";
-  const hasFloor = fpsEstimate && fpsEstimate.confidence === "none"
-    && verdict && (verdict.verdict === "pass" || verdict.verdict === "minimum");
-
-  // Hide FPS when failing minimum or OS doesn't match (cross-platform warn)
-  const osMismatch = comparison?.some(
-    (item) => item.label === "Operating System" && item.minStatus === "warn"
-  ) ?? false;
-  const shouldHideFps = hasEstimate && (verdict?.verdict === "fail" || osMismatch);
-  const fpsVisible = hasEstimate && (!shouldHideFps || showHiddenFps);
+  let platformNote: string | null = null;
+  if (platform !== userPlatform) {
+    if (availablePlatforms.length > 1 && availablePlatforms.includes(userPlatform)) {
+      platformNote = `Showing ${platformLabels[platform]} requirements. You're on ${platformLabels[userPlatform]}.`;
+    } else if (availablePlatforms.length > 0) {
+      platformNote = `This game doesn't list ${platformLabels[userPlatform]} requirements, so we're showing ${platformLabels[platform]}.`;
+    }
+  }
 
   return (
-    <div className="animate-fadeIn flex flex-col gap-4">
-      {game && (
-        <div className="relative flex flex-row items-center gap-3 sm:gap-4 p-3 sm:p-4 pr-16 sm:pr-4 rounded-lg bg-base-200/50 overflow-hidden">
-          {/* FPS counter watermark (replaces verdict icon when estimate is available) */}
-          {fpsVisible ? (
-            <AnimatedFpsNumber target={fpsEstimate.mid} />
-          ) : shouldHideFps ? (
-            <button
-              onClick={() => setShowHiddenFps(true)}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-20 sm:h-20 text-base-content/5 hover:text-base-content/15 transition-colors cursor-pointer select-none"
-              title="Show estimated FPS anyway"
-            >
-              <HiEmojiSad className="w-full h-full" />
-            </button>
-          ) : (() => {
-            const iconClass = "absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-20 sm:h-20 text-base-content/5 select-none pointer-events-none";
-            if (!verdict || verdict.verdict === "unknown") return <HiQuestionMarkCircle className={iconClass} />;
-            if (verdict.verdict === "pass") return <HiCheckCircle className={iconClass} />;
-            if (verdict.verdict === "minimum") return <HiExclamation className={iconClass} />;
-            return <HiEmojiSad className={iconClass} />;
-          })()}
+    <div className="animate-fadeIn flex flex-col gap-5">
+      <section className="card overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          {game?.headerImage ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={game.headerImage}
+              alt=""
+              className="aspect-[460/215] w-full md:w-72 md:self-stretch object-cover bg-base-300"
+            />
+          ) : (
+            <div className="grid aspect-[460/215] w-full md:w-72 place-items-center bg-base-content/[0.04] text-base-content/25">
+              <LuGamepad2 className="h-10 w-10" />
+            </div>
+          )}
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={game.headerImage}
-            alt={game.name}
-            className="w-20 sm:w-28 rounded shadow-md relative z-10 shrink-0"
-          />
-          <div className="relative z-10 text-left min-w-0 flex-1">
-            <p className="text-xs sm:text-base text-base-content/60">Do I need to upgrade for</p>
-            <h3 className="font-bold text-base sm:text-2xl break-words leading-tight">{game.name}</h3>
+          <div className="flex min-w-0 flex-1 flex-col gap-4 p-5">
+            <div>
+              <p className="eyebrow">Results for</p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-bold leading-tight tracking-tight break-words">
+                {game?.name ?? "Your custom requirements"}
+              </h1>
+            </div>
+
+            {availablePlatforms.length > 1 && (
+              <div className="inline-flex w-fit rounded bg-base-content/[0.06] p-0.5" role="tablist" aria-label="Platform">
+                {availablePlatforms.map((p) => {
+                  const active = p === platform;
+                  return (
+                    <button
+                      key={p}
+                      role="tab"
+                      aria-selected={active}
+                      className={`rounded-sm px-3 py-1 text-xs font-semibold transition-colors ${
+                        active ? "bg-primary text-primary-content" : "text-base-content/60 hover:text-base-content"
+                      }`}
+                      onClick={() => onPlatformChange(p)}
+                    >
+                      {platformLabels[p]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {platformNote && (
+              <p className="flex items-start gap-1.5 text-xs text-base-content/55">
+                <LuInfo className="mt-px h-3.5 w-3.5 shrink-0" />
+                {platformNote}
+              </p>
+            )}
           </div>
-        </div>
-      )}
 
-      {availablePlatforms.length > 1 ? (
-        <div className="flex flex-col gap-1">
-          <div role="tablist" className="tabs tabs-boxed w-fit">
-            {availablePlatforms.map((p) => {
-              const isActive = p === platform;
-              const isUserPlatform = p === userPlatform;
-              return (
-                <button
-                  key={p}
-                  role="tab"
-                  className={`tab ${isActive ? (isUserPlatform ? "tab-active" : "bg-base-content/15 text-base-content/70") : ""}`}
-                  onClick={() => onPlatformChange(p)}
-                >
-                  {platformLabels[p]}
-                </button>
-              );
-            })}
-          </div>
-          {platform !== userPlatform && (
-            <p className="text-xs text-base-content/50 flex items-center gap-1">
-              <HiInformationCircle className="w-3.5 h-3.5 shrink-0" />
-              {availablePlatforms.includes(userPlatform)
-                ? `Showing ${platformLabels[platform]} requirements (your OS: ${platformLabels[userPlatform]})`
-                : `No ${platformLabels[userPlatform]} requirements found for this game. Showing ${platformLabels[platform]} requirements instead.`
-              }
-            </p>
-          )}
-        </div>
-      ) : availablePlatforms.length === 1 && platform !== userPlatform ? (
-        <p className="text-xs text-base-content/50 flex items-center gap-1">
-          <HiInformationCircle className="w-3.5 h-3.5 shrink-0" />
-          No {platformLabels[userPlatform]} requirements found. This game only lists {platformLabels[platform]} requirements.
-        </p>
-      ) : null}
-
-      {verdict && <VerdictCard key={`${verdict.verdict}-${platform}`} result={verdict} />}
-
-      {comparison && (
-        <ComparisonResult items={comparison} />
-      )}
-
-      {fpsVisible && (
-        <div className="flex flex-wrap items-center gap-2 px-1 text-sm text-base-content/60">
-          <span>Estimated:</span>
-          <span className={`font-semibold ${fpsColor(fpsEstimate.mid)}`}>
-            ~{fpsEstimate.low}–{fpsEstimate.high} FPS
-          </span>
-          {fpsEstimate.confidence === "limited" && (
-            <span className="text-xs text-base-content/40">(rough estimate)</span>
-          )}
-          {shouldHideFps && (
-            <span className="text-xs text-base-content/40">(may not reflect actual performance)</span>
-          )}
-          <span className="text-xs text-base-content/40">· based on hardware scores</span>
-        </div>
-      )}
-
-      {hasFloor && (
-        <div className="flex flex-wrap items-center gap-2 px-1 text-sm text-base-content/60">
-          <span>Expected performance:</span>
-          <span className={`font-semibold ${verdict.verdict === "pass" ? "text-success" : "text-info"}`}>
-            ≥ {verdict.verdict === "pass" ? 60 : 30} FPS
-          </span>
-          <span className="text-xs text-base-content/40"> hardware wasn&apos;t found in our database</span>
-        </div>
-      )}
-
-      <div>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => setShowEditor(!showEditor)}
-        >
-          {showEditor ? "Hide" : "Show"} Requirements Editor
-          <HiChevronDown className={`w-4 h-4 transition-transform ${showEditor ? "rotate-180" : ""}`} />
-        </button>
-        {showEditor && (
-          <div className="mt-2">
-            <RequirementsEditor
-              minimum={minReqs}
-              recommended={recReqs}
-              onChange={onRequirementsChange}
-              onSubmit={onRerun}
+          <div className="flex flex-col border-t border-base-content/[0.08] p-5 md:w-64 md:shrink-0 md:border-l md:border-t-0">
+            <FpsStat
+              key={`${game?.appid ?? "manual"}-${platform}`}
+              fpsEstimate={fpsEstimate}
+              verdict={verdict}
+              comparison={comparison}
             />
           </div>
-        )}
+        </div>
+      </section>
+
+      {verdict && <VerdictPanel key={`${verdict.verdict}-${platform}`} result={verdict} />}
+
+      {comparison && <ComparisonResult items={comparison} />}
+
+      <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          className="btn btn-ghost gap-2 self-start"
+          onClick={() => setShowEditor(!showEditor)}
+          aria-expanded={showEditor}
+        >
+          <LuSlidersHorizontal className="h-4 w-4" />
+          Adjust requirements
+          <LuChevronDown className={`h-4 w-4 transition-transform ${showEditor ? "rotate-180" : ""}`} />
+        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button className="btn btn-outline gap-2" onClick={onEditSpecs}>
+            <LuPencil className="h-4 w-4" />
+            Edit my specs
+          </button>
+          <button className="btn btn-primary gap-2" onClick={onCheckAnother}>
+            <LuSearch className="h-4 w-4" />
+            Check another game
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center pt-2">
-        <button className="btn btn-primary" onClick={onCheckAnother}>
-          Check Another Game
-        </button>
-        <button className="btn btn-outline" onClick={onEditSpecs}>
-          Edit My Specs
-        </button>
-      </div>
+      {showEditor && (
+        <div className="animate-fadeIn">
+          <RequirementsEditor
+            minimum={minReqs}
+            recommended={recReqs}
+            onChange={onRequirementsChange}
+            onSubmit={onRerun}
+          />
+        </div>
+      )}
     </div>
   );
 }

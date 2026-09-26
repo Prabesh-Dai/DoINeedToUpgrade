@@ -14,38 +14,23 @@ const FIELDS: { key: keyof GameRequirements; label: string }[] = [
 ];
 
 export default function RequirementsCard({ title, requirements }: Props) {
-  if (!requirements) {
-    return (
-      <div className="card bg-base-100/80 backdrop-blur-sm shadow-sm">
-        <div className="card-body">
-          <h3 className="card-title text-lg">{title}</h3>
-          <p className="text-base-content/50">Not available</p>
-        </div>
-      </div>
-    );
-  }
+  const rows = requirements ? FIELDS.filter(({ key }) => requirements[key]) : [];
 
   return (
-    <div className="card bg-base-100/80 backdrop-blur-sm shadow-sm">
-      <div className="card-body">
-        <h3 className="card-title text-lg">{title}</h3>
-        <div className="overflow-x-auto">
-          <table className="table table-sm">
-            <tbody>
-              {FIELDS.map(({ key, label }) => {
-                const value = requirements[key];
-                if (!value) return null;
-                return (
-                  <tr key={key}>
-                    <td className="font-semibold w-28">{label}</td>
-                    <td>{value}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <section className="card overflow-hidden">
+      <h3 className="border-b border-base-content/[0.08] px-5 py-3.5 font-semibold">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-base-content/50">Not listed</p>
+      ) : (
+        <dl className="divide-y divide-base-content/[0.06] text-sm">
+          {rows.map(({ key, label }) => (
+            <div key={key} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 px-5 py-3">
+              <dt className="text-base-content/50">{label}</dt>
+              <dd className="break-words">{requirements![key]}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
   );
 }

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { UserSpecs, GameDetails, Platform } from "@/types";
 import SystemSpecs from "@/components/SystemSpecs";
 import HardwareScanner from "@/components/HardwareScanner";
-import { HiX, HiCheckCircle, HiExclamation } from "react-icons/hi";
+import ActionBar from "@/components/ActionBar";
+import { LuX, LuCircleCheck, LuTriangleAlert, LuHistory } from "react-icons/lu";
 import { savePendingGame } from "@/lib/pendingGameCheck";
 
 interface Props {
@@ -26,7 +27,6 @@ interface Props {
   onToastShown?: () => void;
   hideBack?: boolean;
   confirmLabel?: string;
-  showInfo?: boolean;
 }
 
 export default function StepSystemSpecs({
@@ -48,7 +48,6 @@ export default function StepSystemSpecs({
   onToastShown,
   hideBack,
   confirmLabel,
-  showInfo,
 }: Props) {
   const [toastVisible, setToastVisible] = useState(!!showStorageToast);
   const [toastExiting, setToastExiting] = useState(false);
@@ -146,36 +145,50 @@ export default function StepSystemSpecs({
 
   return (
     <>
-      <div className="animate-fadeIn flex flex-col gap-4 mt-8 py-2">
-        {savedAt && (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/40 px-1">
-            <span className="min-w-0">
-              Using specs saved on{" "}
-              {new Date(savedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-            </span>
-            {onClearSaved && (
-              <button className="btn btn-ghost btn-xs text-base-content/40 gap-1 shrink-0" onClick={onClearSaved}>
-                <HiX className="w-3 h-3" />
-                Clear saved specs
+      <div className="animate-fadeIn flex flex-col gap-5">
+        {game && (
+          <div className="flex items-center gap-3 sm:gap-4 rounded-md border border-base-content/[0.08] bg-base-100/70 p-2.5 pr-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={game.headerImage}
+              alt=""
+              className="h-11 w-[94px] sm:h-12 sm:w-[103px] shrink-0 rounded-sm object-cover bg-base-300"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-base-content/50">Checking compatibility for</p>
+              <p className="truncate font-semibold">{game.name}</p>
+            </div>
+            {!hideBack && (
+              <button className="btn btn-ghost btn-sm shrink-0" onClick={onBack}>
+                Change
               </button>
             )}
           </div>
         )}
 
-        {game && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-base-200/50">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={game.headerImage}
-              alt={game.name}
-              className="w-20 sm:w-24 rounded shadow-sm shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-base-content/70">Checking compatibility for</p>
-              <h3 className="font-bold text-base sm:text-lg break-words">{game.name}</h3>
-            </div>
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Confirm your specs</h1>
+            <p className="mt-1.5 text-base-content/60">
+              We&apos;ll compare these against the game&apos;s requirements.
+            </p>
           </div>
-        )}
+          {savedAt && (
+            <div className="flex items-center gap-1 text-xs text-base-content/50">
+              <LuHistory className="h-3.5 w-3.5" />
+              <span>
+                Saved{" "}
+                {new Date(savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              {onClearSaved && (
+                <button className="btn btn-ghost btn-xs gap-1 text-base-content/50" onClick={onClearSaved}>
+                  <LuX className="h-3 w-3" />
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {onScriptImport && <HardwareScanner onImport={onScriptImport} onDownload={handleScannerDownload} />}
 
@@ -192,70 +205,32 @@ export default function StepSystemSpecs({
           highlightEmpty={highlightEmpty}
         />
 
-        <div className={`flex ${hideBack ? "justify-end" : "justify-between"} items-center`}>
-          {!hideBack && (
-            <button className="btn btn-ghost" onClick={onBack}>
-              &larr; Back
-            </button>
-          )}
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:flex items-center gap-1.5 text-xs text-base-content/40">
-              <kbd className="kbd kbd-xs">Enter</kbd>
-              <span>to continue</span>
-            </span>
-            <button className="btn btn-primary" onClick={handleConfirmAttempt}>
-              {confirmLabel ?? "Check Compatibility"} &rarr;
-            </button>
-          </div>
-        </div>
-
-        {showInfo && (
-          <div className="mt-14 w-full max-w-2xl space-y-3">
-            <h2 className="text-lg font-semibold opacity-80">What is this?</h2>
-            <p className="text-sm opacity-60 leading-relaxed">
-              <strong>Do I Need To Upgrade?</strong> checks whether your PC can run a
-              game by comparing your hardware against its system requirements. Search
-              for any Steam game above, and we&apos;ll auto-detect your specs and tell
-              you if you&apos;re good to go or what you might need to upgrade.
-            </p>
-            <div className="flex flex-col gap-1 text-sm opacity-50 pt-1">
-              <span>&#9679; Auto-detects your hardware</span>
-              <span>&#9679; Compares CPU, GPU, RAM &amp; storage</span>
-              <span>&#9679; Estimates your expected FPS</span>
-              <span>&#9679; Supports Windows, Mac &amp; Linux</span>
-            </div>
-            <h3 className="text-base font-semibold opacity-80 pt-3">About the hardware scanner</h3>
-            <p className="text-sm opacity-60 leading-relaxed">
-              For more accurate results, you can download and run the scanner app.
-              It&apos;s fully open source and only reads basic system info like your
-              CPU model, GPU name, RAM size, and available storage. It does not
-              collect, transmit, or store any personal data — everything stays on
-              your machine.
-            </p>
-          </div>
-        )}
+        <ActionBar
+          onBack={hideBack ? undefined : onBack}
+          onNext={handleConfirmAttempt}
+          nextLabel={confirmLabel ?? "Check compatibility"}
+          hint={<><kbd className="kbd kbd-xs">Enter</kbd> to continue</>}
+        />
       </div>
 
       {(toastVisible || errorToastVisible) && (
-        <div className="fixed right-2 sm:right-4 top-20 z-50 flex flex-col gap-3 max-w-[calc(100vw-1rem)] sm:max-w-sm">
+        <div className="fixed right-3 sm:right-5 top-20 z-50 flex flex-col gap-2 max-w-[calc(100vw-1.5rem)] sm:max-w-sm">
           {toastVisible && (
-            <div className={toastExiting ? "animate-toast-out" : "animate-toast-in"}>
-              <div className="alert alert-info text-sm py-2 px-4 flex items-center gap-2">
-                <HiCheckCircle className="w-5 h-5" />
-                <span>System specs loaded from previous session</span>
+            <div className={toastExiting ? "animate-toast-out" : "animate-toast-in"} role="status">
+              <div className="toast-card">
+                <LuCircleCheck className="h-5 w-5 shrink-0 text-info" />
+                <span>Loaded your specs from last time</span>
               </div>
             </div>
           )}
 
           {errorToastVisible && (
-            <div className={errorToastExiting ? "animate-toast-out" : "animate-toast-in"}>
-              <div className="alert alert-error text-sm py-2 px-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <HiExclamation className="w-5 h-5 shrink-0" />
-                  <span>Please fill in: {emptyFieldNames.join(", ")}</span>
-                </div>
-                <button className="btn btn-ghost btn-xs btn-circle shrink-0" onClick={() => setErrorToastExiting(true)}>
-                  <HiX className="w-3 h-3" />
+            <div className={errorToastExiting ? "animate-toast-out" : "animate-toast-in"} role="alert">
+              <div className="toast-card border-l-[3px] border-l-error">
+                <LuTriangleAlert className="h-5 w-5 shrink-0 text-error" />
+                <span className="flex-1">Please fill in: {emptyFieldNames.join(", ")}</span>
+                <button className="btn btn-ghost btn-xs btn-square shrink-0" onClick={() => setErrorToastExiting(true)} aria-label="Dismiss">
+                  <LuX className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>

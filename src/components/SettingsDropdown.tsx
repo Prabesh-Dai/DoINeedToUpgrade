@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HiCog, HiSun, HiMoon, HiSparkles, HiMinusCircle } from "react-icons/hi";
+import { LuSettings, LuSun, LuMoon, LuSparkles } from "react-icons/lu";
 
 export default function SettingsDropdown() {
   const [open, setOpen] = useState(false);
@@ -28,8 +28,15 @@ export default function SettingsDropdown() {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("click", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [open]);
 
   function toggleTheme() {
@@ -48,30 +55,37 @@ export default function SettingsDropdown() {
   }
 
   return (
-    <div className={`dropdown dropdown-end${open ? " dropdown-open" : ""}`} ref={ref}>
+    <div className="relative" ref={ref}>
       <button
-        className="btn btn-ghost btn-sm"
+        className="btn btn-ghost btn-sm btn-square h-9 w-9 min-h-0 text-base-content/70 hover:text-base-content"
         onClick={() => setOpen(!open)}
         aria-label="Settings"
+        aria-expanded={open}
+        aria-haspopup="menu"
       >
-        <HiCog className="w-4 h-4" />
-        <span className="hidden sm:inline">Settings</span>
+        <LuSettings className="h-4 w-4" />
       </button>
       {open && (
-        <ul className="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-56 mt-2 animate-dropdownIn">
-          <li>
-            <button className="flex items-center gap-2" onClick={toggleTheme}>
-              {dark ? <HiMoon className="w-4 h-4" /> : <HiSun className="w-4 h-4" />}
-              {dark ? "Dark Mode" : "Light Mode"}
-            </button>
-          </li>
-          <li>
-            <button className="flex items-center gap-2" onClick={toggleMotion}>
-              {reduced ? <HiSparkles className="w-4 h-4" /> : <HiMinusCircle className="w-4 h-4" />}
-              {reduced ? "Show Animations" : "Hide Animations"}
-            </button>
-          </li>
-        </ul>
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 w-60 rounded-md border border-base-content/10 bg-base-100 p-2 shadow-lift animate-dropdownIn"
+        >
+          <p className="eyebrow px-2.5 pb-1 pt-1.5">Preferences</p>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded px-2.5 py-2 text-sm hover:bg-base-content/5">
+            <span className="flex items-center gap-2.5">
+              {dark ? <LuMoon className="h-4 w-4 text-base-content/60" /> : <LuSun className="h-4 w-4 text-base-content/60" />}
+              Dark mode
+            </span>
+            <input type="checkbox" className="toggle toggle-primary toggle-sm" checked={dark} onChange={toggleTheme} />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded px-2.5 py-2 text-sm hover:bg-base-content/5">
+            <span className="flex items-center gap-2.5">
+              <LuSparkles className="h-4 w-4 text-base-content/60" />
+              Animations
+            </span>
+            <input type="checkbox" className="toggle toggle-primary toggle-sm" checked={!reduced} onChange={toggleMotion} />
+          </label>
+        </div>
       )}
     </div>
   );

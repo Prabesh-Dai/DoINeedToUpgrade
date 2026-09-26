@@ -1,4 +1,5 @@
 import { ComparisonItem, VerdictResult, UpgradeItem } from "@/types";
+import { NOT_LISTED } from "@/lib/compareSpecs";
 
 function formatList(items: string[]): string {
   if (items.length === 0) return "";
@@ -9,9 +10,9 @@ function formatList(items: string[]): string {
 
 export function computeVerdict(items: ComparisonItem[]): VerdictResult {
   // Filter out components where the game doesn't specify any requirement
-  // (both min and rec are "—") — these shouldn't affect the verdict
+  // (both min and rec are NOT_LISTED) — these shouldn't affect the verdict
   const relevantItems = items.filter(
-    (item) => item.minValue !== "—" || item.recValue !== "—"
+    (item) => item.minValue !== NOT_LISTED || item.recValue !== NOT_LISTED
   );
 
   // No requirements were provided at all — let the user know
@@ -37,7 +38,7 @@ export function computeVerdict(items: ComparisonItem[]): VerdictResult {
       upgradeItems.push({
         component: item.label,
         current: item.userValue,
-        required: item.minValue !== "—" ? item.minValue : item.recValue,
+        required: item.minValue !== NOT_LISTED ? item.minValue : item.recValue,
       });
     } else if (item.recStatus === "fail") {
       // Meets minimum but not recommended — suggest upgrade
@@ -82,7 +83,7 @@ export function computeVerdict(items: ComparisonItem[]): VerdictResult {
   if (allMinPass && allRecPass) {
     return {
       verdict: "pass",
-      title: "You're good to go — no upgrade needed!",
+      title: "You're good to go. No upgrade needed!",
       description: "Your system meets or exceeds the recommended specs.",
       failedComponents,
       warnComponents,
@@ -134,7 +135,7 @@ export function computeVerdict(items: ComparisonItem[]): VerdictResult {
   // Otherwise → unknown
   return {
     verdict: "unknown",
-    title: "Not sure if you need an upgrade — take a look below",
+    title: "Not sure if you need an upgrade. Take a look below.",
     description: "We weren't able to determine if your system can run this game.",
     failedComponents,
     warnComponents,

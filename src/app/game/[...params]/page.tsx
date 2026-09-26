@@ -90,52 +90,64 @@ export default async function GamePage({ params }: Props) {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {/* Hero */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-lg bg-base-200/50">
-        {game.headerImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={game.headerImage}
-            alt={game.name}
-            className="w-full sm:w-48 rounded shadow-md"
-            width={460}
-            height={215}
-          />
-        )}
-        <div className="text-center sm:text-left">
-          <h1 className="text-2xl sm:text-3xl font-bold">Can I Run {game.name}?</h1>
-          <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
-            {game.availablePlatforms.map((p) => (
-              <span key={p} className="badge badge-outline badge-sm">{platformLabels[p]}</span>
-            ))}
+      <section className="card overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          {game.headerImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={game.headerImage}
+              alt={game.name}
+              className="aspect-[460/215] w-full md:w-80 object-cover bg-base-300"
+              width={460}
+              height={215}
+            />
+          )}
+          <div className="flex min-w-0 flex-col justify-center gap-3 p-5 sm:p-6">
+            <p className="eyebrow">System requirements</p>
+            <h1 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight">Can I run {game.name}?</h1>
+            <div className="flex flex-wrap gap-1.5">
+              {game.availablePlatforms.map((p) => (
+                <span key={p} className="chip bg-base-content/[0.08] text-base-content/70">{platformLabels[p]}</span>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Client comparison widget */}
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Your compatibility</h2>
+        <GamePageClient game={game} />
+      </section>
 
       {/* Requirements Tables */}
-      <div>
-        <h2 className="text-xl font-bold mb-3">System Requirements</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">What {game.name} needs</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <RequirementsCard title="Minimum" requirements={minReqs} />
           <RequirementsCard title="Recommended" requirements={recReqs} />
         </div>
-      </div>
+      </section>
 
       {/* Other platform requirements */}
       {otherPlatforms.length > 0 && (
-        <details className="collapse collapse-arrow bg-base-100 shadow-sm">
-          <summary className="collapse-title text-lg font-medium">
-            Other Platform Requirements
+        <details className="group card overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold [&::-webkit-details-marker]:hidden">
+            Other platforms
+            <span className="text-sm font-normal text-base-content/50 group-open:hidden">
+              {otherPlatforms.map((p) => platformLabels[p]).join(", ")}
+            </span>
           </summary>
-          <div className="collapse-content">
+          <div className="flex flex-col gap-6 border-t border-base-content/[0.08] p-5">
             {otherPlatforms.map((p) => {
               const platformReqs = game.platformRequirements[p];
               if (!platformReqs) return null;
               return (
-                <div key={p} className="mb-4">
-                  <h3 className="font-semibold text-base mb-2">{platformLabels[p]}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div key={p}>
+                  <h3 className="eyebrow mb-3">{platformLabels[p]}</h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <RequirementsCard title="Minimum" requirements={platformReqs.minimum} />
                     <RequirementsCard title="Recommended" requirements={platformReqs.recommended} />
                   </div>
@@ -146,15 +158,9 @@ export default async function GamePage({ params }: Props) {
         </details>
       )}
 
-      {/* Client comparison widget */}
-      <div>
-        <h2 className="text-xl font-bold mb-3">Your Compatibility</h2>
-        <GamePageClient game={game} />
-      </div>
-
-      {/* SEO prose — styled subtly so it reads as a natural footer, not filler */}
-      <section className="border-t border-base-content/10 pt-5 mt-2 text-sm text-base-content/60 leading-relaxed max-w-2xl">
-        <h2 className="text-base font-medium text-base-content/80 mb-1.5">About {game.name} System Requirements</h2>
+      {/* SEO prose, styled as a quiet footer */}
+      <section className="max-w-2xl border-t border-base-content/10 pt-6 text-sm leading-relaxed text-base-content/60">
+        <h2 className="mb-1.5 font-semibold text-base-content/80">About {game.name} system requirements</h2>
         <p>
           {game.name} is available on {game.availablePlatforms.map((p) => platformLabels[p]).join(", ")}.
           {recReqs?.gpu && ` The recommended graphics card is ${recReqs.gpu}.`}

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import { Montserrat } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavButtons from "@/components/NavButtons";
 import SettingsDropdown from "@/components/SettingsDropdown";
@@ -9,7 +9,8 @@ import { StructuredData } from "@/components/StructuredData";
 import GeometricBackground from "@/components/GeometricBackground";
 import PerformanceHint from "@/components/PerformanceHint";
 
-const montserrat = Montserrat({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://doineedtoupgrade.com"),
@@ -70,19 +71,19 @@ export default function RootLayout({
       <head>
         <StructuredData />
       </head>
-      <body className={`${montserrat.className} h-full w-full overflow-hidden flex flex-col bg-base-200`}>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans h-full w-full overflow-hidden flex flex-col bg-base-200 text-base-content`}>
         <GeometricBackground />
-        <div className="navbar bg-base-100/80 backdrop-blur-sm border-b border-base-300 px-2 sm:px-4 min-h-0 py-2 relative z-20 flex-none">
-          <div className="flex-1">
+        <header className="relative z-20 flex-none border-b border-base-content/[0.06] bg-base-200/70 backdrop-blur-xl">
+          <div className="mx-auto flex h-14 sm:h-16 w-full max-w-6xl items-center justify-between gap-2 px-4">
             <Logo />
+            <nav className="flex items-center gap-0.5 sm:gap-1">
+              <NavButtons />
+              <SettingsDropdown />
+            </nav>
           </div>
-          <div className="flex-none flex items-center gap-1">
-            <NavButtons />
-            <SettingsDropdown />
-          </div>
-        </div>
+        </header>
         <main className="flex-1 w-full max-w-full overflow-y-auto overflow-x-hidden relative z-10 scrollbar-subtle" style={{ scrollbarGutter: "stable" }}>
-          <div className="mx-auto w-full max-w-5xl px-3 sm:px-4 py-4 sm:py-6">
+          <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-10">
             {children}
           </div>
         </main>

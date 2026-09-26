@@ -3,6 +3,9 @@ import { osList, osScores } from "@/lib/hardwareData";
 import { fuzzyMatchHardware } from "@/lib/fuzzyMatch";
 import { parseCPURequirement, ParsedCPUSpecs } from "@/lib/parseRequirements";
 
+// Shown when a game doesn't specify a requirement for a component
+export const NOT_LISTED = "Not listed";
+
 function parseGB(text: string): number | null {
   if (!text) return null;
   // Match patterns like "8 GB", "8GB", "16384 MB"
@@ -708,8 +711,8 @@ export function compareSpecs(
   items.push({
     label: "Operating System",
     userValue: user.os || "Unknown",
-    minValue: min.os || "—",
-    recValue: rec.os || "—",
+    minValue: min.os || NOT_LISTED,
+    recValue: rec.os || NOT_LISTED,
     minStatus: osMinStatus,
     recStatus: osRecStatus,
   });
@@ -731,8 +734,8 @@ export function compareSpecs(
   items.push({
     label: "Processor",
     userValue: cpuDisplay,
-    minValue: min.cpu || "—",
-    recValue: rec.cpu || "—",
+    minValue: min.cpu || NOT_LISTED,
+    recValue: rec.cpu || NOT_LISTED,
     minStatus: cpuMinStatus,
     recStatus: cpuRecStatus,
   });
@@ -764,8 +767,8 @@ export function compareSpecs(
   items.push({
     label: "Graphics",
     userValue: cleanedGPU || "Unknown",
-    minValue: min.gpu || "—",
-    recValue: rec.gpu || "—",
+    minValue: min.gpu || NOT_LISTED,
+    recValue: rec.gpu || NOT_LISTED,
     minStatus: gpuMinStatus,
     recStatus: gpuRecStatus,
   });
@@ -775,8 +778,8 @@ export function compareSpecs(
   items.push({
     label: "Memory (RAM)",
     userValue: ramDisplay,
-    minValue: min.ram || "—",
-    recValue: rec.ram || "—",
+    minValue: min.ram || NOT_LISTED,
+    recValue: rec.ram || NOT_LISTED,
     minStatus: compareNumeric(user.ramGB, min.ram),
     recStatus: compareNumeric(user.ramGB, rec.ram),
   });
@@ -786,8 +789,8 @@ export function compareSpecs(
   items.push({
     label: "Storage",
     userValue: storageDisplay,
-    minValue: min.storage || "—",
-    recValue: rec.storage || "—",
+    minValue: min.storage || NOT_LISTED,
+    recValue: rec.storage || NOT_LISTED,
     minStatus: compareNumeric(user.storageGB, min.storage),
     recStatus: compareNumeric(user.storageGB, rec.storage),
   });

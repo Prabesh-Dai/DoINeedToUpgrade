@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { UserSpecs, GameDetails, GameRequirements, ComparisonItem, Platform, GameSource, HardwareScores } from "@/types";
-import { HiCheckCircle } from "react-icons/hi";
+import { LuCircleCheck, LuX } from "react-icons/lu";
 import { compareSpecs } from "@/lib/compareSpecs";
 import { estimateFps } from "@/lib/fpsEstimate";
 import { computeVerdict } from "@/lib/computeVerdict";
@@ -19,6 +19,7 @@ import StepResults from "@/components/StepResults";
 import RequirementsEditor from "@/components/RequirementsEditor";
 import SystemSpecs from "@/components/SystemSpecs";
 import HardwareScanner from "@/components/HardwareScanner";
+import ActionBar from "@/components/ActionBar";
 
 const defaultSpecs: UserSpecs = {
   os: "",
@@ -335,6 +336,11 @@ function Home() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [step, importedFromScanner, manualMode]);
 
+  // The <main> element is the scroll container; reset it so each step starts at the top
+  useEffect(() => {
+    document.querySelector("main")?.scrollTo({ top: 0 });
+  }, [step, manualMode]);
+
   const verdict = comparison ? computeVerdict(comparison) : null;
   const fpsEstimate = hardwareScores ? estimateFps(hardwareScores) : null;
 
@@ -525,14 +531,19 @@ function Home() {
     ? ["Your System", "Pick a Game", "Results"]
     : ["Pick a Game", "Your System", "Results"];
 
+  // On the landing screen the hero does the explaining; the stepper appears once the flow starts
+  const showStepper = importedFromScanner || step > 1;
+
   return (
-    <div className="flex flex-col gap-6">
-      <WizardStepper
-        currentStep={step}
-        onStepClick={goToStep}
-        maxReached={maxReached}
-        steps={stepLabels}
-      />
+    <div className="flex flex-col gap-8">
+      {showStepper && (
+        <WizardStepper
+          currentStep={step}
+          onStepClick={goToStep}
+          maxReached={maxReached}
+          steps={stepLabels}
+        />
+      )}
 
       {/* Scanner import mode: Step 1 shows system specs */}
       {importedFromScanner && step === 1 && !manualMode && (
@@ -553,7 +564,6 @@ function Home() {
           onToastShown={() => {}}
           hideBack
           confirmLabel="Continue"
-          showInfo
         />
       )}
 
@@ -572,7 +582,8 @@ function Home() {
 
       {/* Scanner import mode: Step 2 manual mode */}
       {importedFromScanner && step === 2 && manualMode && (
-        <div className="animate-fadeIn flex flex-col gap-4">
+        <div className="animate-fadeIn flex flex-col gap-5">
+          <ManualHeader />
           <SystemSpecs
             specs={specs}
             onChange={handleSpecsChange}
@@ -590,14 +601,12 @@ function Home() {
             onChange={handleRequirementsChange}
             onSubmit={handleSpecsConfirm}
           />
-          <div className="flex justify-between">
-            <button className="btn btn-ghost" onClick={() => setManualMode(false)}>
-              &larr; Back to Game Search
-            </button>
-            <button className="btn btn-primary" onClick={handleSpecsConfirm}>
-              Check Compatibility &rarr;
-            </button>
-          </div>
+          <ActionBar
+            onBack={() => setManualMode(false)}
+            backLabel="Back to search"
+            onNext={handleSpecsConfirm}
+            nextLabel="Check compatibility"
+          />
         </div>
       )}
 
@@ -636,7 +645,8 @@ function Home() {
       )}
 
       {!importedFromScanner && step === 2 && manualMode && (
-        <div className="animate-fadeIn flex flex-col gap-4">
+        <div className="animate-fadeIn flex flex-col gap-5">
+          <ManualHeader />
           <HardwareScanner onImport={handleScriptImport} />
           <SystemSpecs
             specs={specs}
@@ -655,14 +665,12 @@ function Home() {
             onChange={handleRequirementsChange}
             onSubmit={handleSpecsConfirm}
           />
-          <div className="flex justify-between">
-            <button className="btn btn-ghost" onClick={() => goToStep(1)}>
-              &larr; Back
-            </button>
-            <button className="btn btn-primary" onClick={handleSpecsConfirm}>
-              Check Compatibility &rarr;
-            </button>
-          </div>
+          <ActionBar
+            onBack={() => goToStep(1)}
+            backLabel="Back"
+            onNext={handleSpecsConfirm}
+            nextLabel="Check compatibility"
+          />
         </div>
       )}
 
@@ -688,15 +696,16 @@ function Home() {
 
       {/* Toast for URL-imported specs */}
       {showUrlImportToast && (
-        <div className="fixed right-2 sm:right-4 top-20 z-50 animate-toast-in max-w-[calc(100vw-1rem)] sm:max-w-sm">
-          <div className="alert alert-success text-sm py-2 px-4 flex items-center gap-2 shadow-lg">
-            <HiCheckCircle className="w-5 h-5" />
-            <span>Hardware specs imported from scanner!</span>
+        <div className="fixed right-3 sm:right-5 top-20 z-50 animate-toast-in max-w-[calc(100vw-1.5rem)] sm:max-w-sm" role="status">
+          <div className="toast-card">
+            <LuCircleCheck className="h-5 w-5 shrink-0 text-success" />
+            <span className="flex-1">Specs imported from the scanner</span>
             <button
-              className="btn btn-ghost btn-xs"
+              className="btn btn-ghost btn-xs btn-square"
               onClick={() => setShowUrlImportToast(false)}
+              aria-label="Dismiss"
             >
-              &times;
+              <LuX className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -705,10 +714,21 @@ function Home() {
   );
 }
 
+function ManualHeader() {
+  return (
+    <div>
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Manual check</h1>
+      <p className="mt-1.5 text-base-content/60">
+        Enter your specs and the game&apos;s requirements yourself.
+      </p>
+    </div>
+  );
+}
+
 // Wrap in Suspense for useSearchParams
 export default function HomeWizard() {
   return (
-    <Suspense fallback={<div className="flex justify-center p-8"><span className="loading loading-spinner loading-lg" /></div>}>
+    <Suspense fallback={<div className="flex justify-center p-16"><span className="loading loading-spinner loading-md text-primary" /></div>}>
       <Home />
     </Suspense>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HiX } from "react-icons/hi";
+import { LuX } from "react-icons/lu";
 
 export default function PerformanceHint() {
   const [visible, setVisible] = useState(false);
@@ -23,13 +23,13 @@ export default function PerformanceHint() {
   }
 
   return (
-    <div className="fixed right-2 sm:right-4 top-16 sm:top-20 z-50 max-w-[calc(100vw-1rem)] sm:max-w-sm">
-      <div className="alert alert-warning shadow-lg gap-2 py-2 px-3 flex items-start sm:items-center">
-        <span className="text-sm flex-1 min-w-0 break-words">
-          Animations may be affecting performance. You can disable them in <strong>Settings</strong>.
+    <div className="fixed right-3 sm:right-5 top-16 sm:top-20 z-50 max-w-[calc(100vw-1.5rem)] sm:max-w-sm animate-toast-in" role="status">
+      <div className="toast-card border-l-[3px] border-l-warning items-start sm:items-center">
+        <span className="flex-1 min-w-0 break-words">
+          Animations might be slowing things down. You can turn them off in <strong>Settings</strong>.
         </span>
-        <button className="btn btn-ghost btn-xs btn-circle shrink-0" onClick={dismiss} aria-label="Dismiss">
-          <HiX className="w-4 h-4" />
+        <button className="btn btn-ghost btn-xs btn-square shrink-0" onClick={dismiss} aria-label="Dismiss">
+          <LuX className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

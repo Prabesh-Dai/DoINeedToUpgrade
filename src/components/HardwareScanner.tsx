@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { UserSpecs } from "@/types";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
-import { HiCheckCircle, HiExclamation, HiDownload, HiClipboard, HiClipboardCopy } from "react-icons/hi";
+import { LuCircleCheck, LuTriangleAlert, LuDownload, LuClipboardPaste, LuCopy, LuCheck, LuScanLine, LuTerminal } from "react-icons/lu";
 
 interface Props {
   onImport: (specs: UserSpecs) => void;
@@ -48,7 +48,7 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
   macos: {
     label: "macOS",
     appFiles: [
-      { label: "Apple Silicon (M1/M2/M3)", file: "/downloads/DoINeedToUpgrade-Mac-AppleSilicon.dmg" },
+      { label: "Apple Silicon (M1 and newer)", file: "/downloads/DoINeedToUpgrade-Mac-AppleSilicon.dmg" },
       { label: "Intel Mac", file: "/downloads/DoINeedToUpgrade-Mac-Intel.dmg" },
     ],
     terminalCommand: { label: "Terminal", command: "curl -s {BASE}/api/scan | bash" },
@@ -137,191 +137,166 @@ export default function HardwareScanner({ onImport, onDownload }: Props) {
   }
 
   const info = platformInfo[clientPlatform];
+  const command = info.terminalCommand.command.replace("{BASE}", typeof window !== "undefined" ? window.location.origin : "");
 
   return (
     <>
-      <div id="hardware-scanner" className="collapse collapse-arrow bg-base-100/80 backdrop-blur-sm shadow-sm w-full max-w-full overflow-hidden">
-        <input type="checkbox" ref={collapseRef} />
-        <div className="collapse-title !pl-3 sm:!pl-4 !pr-10">
-          <h3 className="font-semibold text-sm">Need more accurate detection?</h3>
-          <p className="text-xs text-base-content/60">
-            Run a quick scan to detect your exact hardware specs
-          </p>
+      <div id="hardware-scanner" className="collapse collapse-arrow w-full max-w-full overflow-hidden rounded-md border border-base-content/[0.08] bg-base-100/70">
+        <input type="checkbox" ref={collapseRef} aria-label="Show hardware scanner options" />
+        <div className="collapse-title flex items-center gap-3 !pl-3.5 sm:!pl-4 !pr-12 !py-3.5 !min-h-0">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded bg-primary text-primary-content">
+            <LuScanLine className="h-[18px] w-[18px]" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold">Get exact specs with the scanner</h3>
+            <p className="text-xs text-base-content/55">
+              Takes a few seconds. Open source, runs on your machine.
+            </p>
+          </div>
         </div>
-        <div className="collapse-content !px-3 sm:!px-4 flex flex-col gap-4">
-          {/* Terminal command section (primary) */}
-          <div className="bg-base-200 rounded-lg p-3 sm:p-4 w-full max-w-full overflow-hidden">
-            <p className="text-sm font-medium mb-3">
-              Run in {info.terminalCommand.label}:
-            </p>
-            <div className="relative w-full max-w-full">
-              <div className="w-full bg-base-300 rounded-lg pl-3 pr-12 sm:pr-14 py-2 overflow-x-auto scrollbar-subtle">
-                <code className="font-mono text-xs whitespace-nowrap">
-                  {info.terminalCommand.command.replace("{BASE}", typeof window !== "undefined" ? window.location.origin : "")}
-                </code>
+        <div className="collapse-content !px-3.5 sm:!px-4 flex flex-col gap-4">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 pt-1">
+            {/* Terminal command */}
+            <div className="flex min-w-0 flex-col gap-3 rounded border border-base-content/[0.08] bg-base-content/[0.02] p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <LuTerminal className="h-4 w-4 text-base-content/50" />
+                Run in {info.terminalCommand.label}
+                <span className="chip ml-auto bg-primary text-primary-content">Fastest</span>
               </div>
-              <button
-                className="btn btn-sm btn-primary btn-square absolute right-1 top-1/2 -translate-y-1/2"
-                onClick={async () => {
-                  const cmd = info.terminalCommand.command.replace("{BASE}", window.location.origin);
-                  await navigator.clipboard.writeText(cmd);
-                  onDownload?.();
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                aria-label="Copy command"
-              >
-                {copied ? <HiCheckCircle className="w-5 h-5" /> : <HiClipboardCopy className="w-5 h-5" />}
-              </button>
+              <div className="flex w-full max-w-full items-stretch overflow-hidden rounded-sm bg-base-300/70">
+                <div className="min-w-0 flex-1 overflow-x-auto py-2.5 pl-3 pr-3 scrollbar-subtle">
+                  <code className="whitespace-nowrap font-mono text-xs">{command}</code>
+                </div>
+                <button
+                  className="btn btn-sm btn-square btn-ghost h-auto shrink-0 rounded-none border-l border-base-content/10"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(info.terminalCommand.command.replace("{BASE}", window.location.origin));
+                    onDownload?.();
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  aria-label="Copy command"
+                >
+                  {copied ? <LuCheck className="h-4 w-4 text-success" /> : <LuCopy className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-base-content/55 leading-relaxed">
+                Detects your hardware and reopens this page with your specs filled in.
+              </p>
             </div>
-            <p className="text-xs text-base-content/60 mt-2 break-words">
-              Detects your hardware and opens this page with specs imported.
-            </p>
-          </div>
 
-          {/* Divider between terminal and download */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-base-300" />
-            <span className="text-xs text-base-content/50">or download the app</span>
-            <div className="flex-1 h-px bg-base-300" />
-          </div>
-
-          {/* Download section */}
-          <div className="bg-base-200 rounded-lg p-3 sm:p-4 w-full max-w-full overflow-hidden">
-            <p className="text-sm font-medium mb-3">
-              Quick scan for {info.label}:
-            </p>
-            <div className="flex flex-col gap-3">
-              <div className={`flex gap-2 ${info.appFiles.length > 1 ? "flex-col sm:flex-row" : ""}`}>
+            {/* App download */}
+            <div className="flex min-w-0 flex-col gap-3 rounded border border-base-content/[0.08] bg-base-content/[0.02] p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <LuDownload className="h-4 w-4 text-base-content/50" />
+                Or download the app for {info.label}
+              </div>
+              <div className="flex flex-col gap-2">
                 {info.appFiles.map((app) => (
                   <a
                     key={app.file}
                     href={app.file}
-                    className={`btn btn-primary btn-sm ${info.appFiles.length === 1 ? "w-full" : "flex-1"}`}
+                    className="btn btn-sm btn-outline h-auto min-h-9 w-full justify-start py-2 text-left leading-snug"
                     onClick={() => onDownload?.()}
                   >
-                    <HiDownload className="w-4 h-4" />
-                    {info.appFiles.length > 1 ? app.label : "Download Scanner"}
+                    <LuDownload className="h-4 w-4 shrink-0" />
+                    {info.appFiles.length > 1 ? app.label : "Download scanner"}
                   </a>
                 ))}
               </div>
 
-              {/* Structured instructions */}
-              {info.stepGroups.map((group, groupIdx) => (
-                <div key={groupIdx} className={``}>
-                  {group.alternatives ? (
-                    <div className="flex items-start gap-2">
-                      <span className="badge badge-neutral text-neutral-content w-5 h-5 rounded-full p-0 mt-3 shrink-0 text-xs">{groupIdx + 1}</span>
-                      <div className="flex-1 min-w-0 flex flex-col gap-2 rounded-lg p-3" style={{ backgroundColor: "rgba(0,0,0,0.08)" }}>
-                        <span className="text-xs break-words">{group.primary}</span>
-                        {group.alternatives.map((alt, altIdx) => (
-                          <div key={altIdx} className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-px bg-base-300" />
-                              <span className="text-xs text-base-content/50 whitespace-nowrap">OR ALTERNATIVELY</span>
-                              <div className="flex-1 h-px bg-base-300" />
-                            </div>
-                            {alt.terminalCommand ? (
-                              <div className="w-full max-w-full">
-                                <p className="text-xs mb-1.5 break-words">{alt.text}</p>
-                                <div className="relative w-full max-w-full">
-                                  <div className="w-full bg-base-300 rounded-lg pl-3 pr-12 sm:pr-14 py-2 overflow-x-auto scrollbar-subtle">
-                                    <code className="font-mono text-xs whitespace-nowrap">
-                                      {alt.terminalCommand}
-                                    </code>
-                                  </div>
-                                  <button
-                                    className="btn btn-sm btn-ghost btn-square bg-base-200 absolute right-1 top-1/2 -translate-y-1/2"
-                                    onClick={async () => {
-                                      await navigator.clipboard.writeText(alt.terminalCommand!);
-                                      setCopied(true);
-                                      setTimeout(() => setCopied(false), 2000);
-                                    }}
-                                    aria-label="Copy command"
-                                  >
-                                    {copied ? <HiCheckCircle className="w-5 h-5 text-primary" /> : <HiClipboardCopy className="w-5 h-5 text-base-content" />}
-                                  </button>
-                                </div>
+              <ol className="flex flex-col gap-2.5">
+                {info.stepGroups.map((group, groupIdx) => (
+                  <li key={groupIdx} className="flex items-start gap-2.5">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-base-content/[0.08] text-[11px] font-semibold text-base-content/70">{groupIdx + 1}</span>
+                    <div className="flex min-w-0 flex-1 flex-col gap-2 text-xs leading-relaxed text-base-content/75">
+                      <span className="break-words">{group.primary}</span>
+                      {group.alternatives?.map((alt, altIdx) => (
+                        <div key={altIdx} className="flex flex-col gap-1.5 border-l-2 border-base-content/10 pl-3">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-base-content/40">Alternatively</span>
+                          <span className="break-words">{alt.text}</span>
+                          {alt.terminalCommand && (
+                            <div className="flex w-full max-w-full items-stretch overflow-hidden rounded-sm bg-base-300/70">
+                              <div className="min-w-0 flex-1 overflow-x-auto py-2 pl-3 pr-3 scrollbar-subtle">
+                                <code className="whitespace-nowrap font-mono text-[11px]">{alt.terminalCommand}</code>
                               </div>
-                            ) : (
-                              <span className="text-xs">{alt.text}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                              <button
+                                className="btn btn-sm btn-square btn-ghost h-auto shrink-0 rounded-none border-l border-base-content/10"
+                                onClick={async () => {
+                                  await navigator.clipboard.writeText(alt.terminalCommand!);
+                                  setCopied(true);
+                                  setTimeout(() => setCopied(false), 2000);
+                                }}
+                                aria-label="Copy command"
+                              >
+                                {copied ? <LuCheck className="h-3.5 w-3.5 text-success" /> : <LuCopy className="h-3.5 w-3.5" />}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="flex items-start gap-2">
-                      <span className="badge badge-neutral text-neutral-content w-5 h-5 rounded-full p-0 shrink-0 text-xs mt-0.5">{groupIdx + 1}</span>
-                      <span className="text-xs flex-1 min-w-0 break-words">{group.primary}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
 
-          {/* Paste from clipboard - fallback */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-base-300" />
-            <span className="text-xs text-base-content/50">or paste manually</span>
-            <div className="flex-1 h-px bg-base-300" />
+          {/* Paste fallback */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-base-content/55">Already have a code from the scanner? Paste it here.</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className={`input input-bordered input-sm flex-1 min-w-0 font-mono text-xs ${status === "error" ? "input-error" : status === "success" ? "input-success" : ""}`}
+                placeholder="DINAU:..."
+                value={pasteValue}
+                onChange={(e) => handlePasteChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleImport();
+                  }
+                }}
+                aria-label="Scanner code"
+              />
+              <button
+                className="btn btn-sm btn-ghost border border-base-content/10 gap-1.5"
+                onClick={handlePasteFromClipboard}
+                title="Paste from clipboard"
+              >
+                <LuClipboardPaste className="h-4 w-4" />
+                <span className="hidden sm:inline">Paste</span>
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={handleImport}
+                disabled={!pasteValue.trim()}
+              >
+                Import
+              </button>
+            </div>
+            {status === "success" && (
+              <p className="flex items-center gap-1.5 text-xs text-success">
+                <LuCircleCheck className="h-4 w-4" />
+                Specs imported.
+              </p>
+            )}
+            {status === "error" && (
+              <p className="flex items-center gap-1.5 text-xs text-error">
+                <LuTriangleAlert className="h-4 w-4" />
+                That code isn&apos;t valid. Make sure you copied the whole DINAU:... string.
+              </p>
+            )}
           </div>
-
-          <div className="flex gap-2">
-            <button
-              className="btn btn-sm btn-outline flex-1"
-              onClick={handlePasteFromClipboard}
-            >
-              <HiClipboard className="w-4 h-4" />
-              Paste from Clipboard
-            </button>
-          </div>
-
-          {/* Manual paste input */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              className={`input input-bordered input-sm flex-1 min-w-0 font-mono text-xs ${status === "error" ? "input-error" : status === "success" ? "input-success" : ""
-                }`}
-              placeholder="DINAU:..."
-              value={pasteValue}
-              onChange={(e) => handlePasteChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleImport();
-                }
-              }}
-            />
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={handleImport}
-              disabled={!pasteValue.trim()}
-            >
-              Import
-            </button>
-          </div>
-          {status === "success" && (
-            <p className="text-xs text-success flex items-center gap-1">
-              <HiCheckCircle className="w-4 h-4" />
-              Hardware specs imported successfully!
-            </p>
-          )}
-          {status === "error" && (
-            <p className="text-xs text-error flex items-center gap-1">
-              <HiExclamation className="w-4 h-4" />
-              Invalid code. Make sure you copied the entire DINAU:... string.
-            </p>
-          )}
         </div>
       </div>
 
       {toast && (
-        <div className="toast toast-end toast-bottom z-50">
-          <div className="alert alert-success text-sm py-2 px-4 flex items-center gap-2">
-            <HiCheckCircle className="w-5 h-5" />
-            <span>Hardware specs imported successfully!</span>
+        <div className="fixed bottom-5 right-3 sm:right-5 z-50 animate-toast-in max-w-[calc(100vw-1.5rem)]" role="status">
+          <div className="toast-card">
+            <LuCircleCheck className="h-5 w-5 shrink-0 text-success" />
+            <span>Hardware specs imported</span>
           </div>
         </div>
       )}

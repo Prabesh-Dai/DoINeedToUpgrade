@@ -10,6 +10,8 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  id?: string;
+  name?: string;
 }
 
 export default function AutocompleteInput({
@@ -20,11 +22,14 @@ export default function AutocompleteInput({
   placeholder,
   disabled,
   className,
+  id,
+  name,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const listId = `${id ?? name ?? "autocomplete"}-listbox`;
 
   const filtered = (() => {
     if (!value.trim()) return [];
@@ -73,7 +78,11 @@ export default function AutocompleteInput({
   return (
     <div ref={wrapperRef} className="relative">
       <input
+        id={id}
+        name={name}
         type="text"
+        autoComplete="off"
+        spellCheck={false}
         className={`input input-bordered w-full ${className ?? ""}`}
         value={value}
         onChange={(e) => {
@@ -109,8 +118,10 @@ export default function AutocompleteInput({
             e.preventDefault();
             if (isOpen && highlightIndex >= 0) {
               selectItem(filtered[highlightIndex]);
-            } else if (!isOpen) {
+            } else if (!isOpen || filtered.length === 0) {
               onSubmit?.();
+            } else {
+              setIsOpen(false);
             }
           } else if (e.key === "Escape") {
             setIsOpen(false);
@@ -121,22 +132,25 @@ export default function AutocompleteInput({
         placeholder={placeholder}
         disabled={disabled}
         role="combobox"
+        aria-controls={listId}
         aria-expanded={isOpen && filtered.length > 0}
         aria-autocomplete="list"
         aria-activedescendant={
-          highlightIndex >= 0 ? `option-${highlightIndex}` : undefined
+          highlightIndex >= 0 ? `${listId}-${highlightIndex}` : undefined
         }
       />
       {isOpen && filtered.length > 0 && (
         <ul
+          id={listId}
           ref={listRef}
           role="listbox"
-          className="flex flex-col bg-base-100 border border-base-300 rounded-box absolute z-50 w-full mt-1 max-h-60 overflow-y-auto shadow-lg p-2 gap-1"
+          className="absolute z-50 mt-1.5 flex max-h-64 w-full flex-col gap-0.5 overflow-y-auto rounded-md border border-base-content/10 bg-base-100 p-1 shadow-lift scrollbar-subtle animate-dropdownIn"
         >
           {filtered.map((item, index) => (
-            <li key={item} id={`option-${index}`} role="option" aria-selected={index === highlightIndex}>
+            <li key={item} id={`${listId}-${index}`} role="option" aria-selected={index === highlightIndex}>
               <button
-                className={`w-full text-left px-2 py-1 rounded-md ${index === highlightIndex ? "bg-base-200" : ""}`}
+                type="button"
+                className={`w-full rounded-sm px-2.5 py-1.5 text-left text-sm transition-colors ${index === highlightIndex ? "bg-base-content/[0.07] text-base-content" : "text-base-content/80"}`}
                 onClick={() => selectItem(item)}
                 onMouseEnter={() => setHighlightIndex(index)}
               >

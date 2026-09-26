@@ -3,7 +3,7 @@
 import { UserSpecs, DetectionSource } from "@/types";
 import AutocompleteInput from "./AutocompleteInput";
 import { osList } from "@/lib/hardwareData";
-import { HiRefresh, HiExclamation, HiInformationCircle } from "react-icons/hi";
+import { LuRotateCcw, LuTriangleAlert, LuInfo, LuCpu, LuMonitor, LuMemoryStick, LuHardDrive, LuLaptop, LuScanLine, LuWandSparkles } from "react-icons/lu";
 
 interface Props {
   specs: UserSpecs;
@@ -19,15 +19,54 @@ interface Props {
 }
 
 const sourceLabels: Record<DetectionSource, string> = {
-  auto: "Auto-detected",
-  script: "Detected via hardware scan",
+  auto: "Detected from your browser. Fix anything that looks off.",
+  script: "Detected by the hardware scanner.",
 };
+
+function Field({
+  id,
+  icon: Icon,
+  label,
+  estimated,
+  note,
+  className = "",
+  children,
+}: {
+  id: string;
+  icon: typeof LuCpu;
+  label: string;
+  estimated?: boolean;
+  note?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id} className="flex items-center gap-2 text-sm font-medium text-base-content/80">
+          <Icon className="h-4 w-4 text-base-content/40" />
+          {label}
+          {note && <span className="font-normal text-base-content/40">{note}</span>}
+        </label>
+        {estimated && (
+          <span className="chip bg-warning text-warning-content">
+            Estimated
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function DetectingSpinner() {
+  return <span className="loading loading-spinner loading-xs absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40" />;
+}
 
 export default function SystemSpecs({ specs, onChange, onSubmit, dirty, cpuList, gpuList, detecting, unmatchedFields = [], hideSubmit = false, highlightEmpty = false }: Props) {
   const isAuto = specs.detectionSource === "auto";
-  const isScript = specs.detectionSource === "script";
   const manual = specs.manualFields ?? [];
-  const isEstimated = (field: string) => isAuto && !manual.includes(field);
+  const isEstimated = (field: string) => !detecting && isAuto && !manual.includes(field);
   const emptyClass = (isEmpty: boolean) =>
     highlightEmpty && isEmpty ? "!border-error animate-shake" : "";
 
@@ -43,169 +82,170 @@ export default function SystemSpecs({ specs, onChange, onSubmit, dirty, cpuList,
     }
   }
 
+  const nonGuessedUnmatched = unmatchedFields.filter((f) => !specs.guessedFields?.includes(f));
+  const SourceIcon = specs.detectionSource === "script" ? LuScanLine : LuWandSparkles;
+
   return (
-    <div className="card bg-base-100/80 backdrop-blur-sm shadow-sm w-full max-w-full overflow-hidden">
-      <div className="card-body">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="card-title">Your System Specs</h2>
-            <p className="text-sm text-base-content/70">
-              {detecting
-                ? "Detecting your hardware..."
-                : `${sourceLabels[specs.detectionSource ?? "auto"]} specs. Edit if needed.`}
+    <section className="card w-full max-w-full overflow-visible rounded-md">
+      <div className="card-body gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold">Your hardware</h2>
+            <p className="mt-1 flex items-center gap-2 text-sm text-base-content/60">
+              {detecting ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Detecting your hardware…
+                </>
+              ) : (
+                <>
+                  <SourceIcon className="h-4 w-4 shrink-0 text-base-content/40" />
+                  {sourceLabels[specs.detectionSource ?? "auto"]}
+                </>
+              )}
             </p>
           </div>
           {!hideSubmit && (
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm gap-2"
               onClick={onSubmit}
               disabled={!dirty}
               title="Recheck compatibility"
             >
-              <HiRefresh className="w-4 h-4" />
+              <LuRotateCcw className="h-4 w-4" />
               Recheck
             </button>
           )}
         </div>
 
         {!detecting && isAuto && specs.guessedFields && specs.guessedFields.length > 0 && (
-          <div role="alert" className="alert alert-info text-sm">
-            <HiInformationCircle className="h-5 w-5 shrink-0" />
+          <div role="alert" className="notice border-l-info">
+            <LuInfo className="mt-0.5 h-4 w-4 shrink-0 text-info" />
             <span>
-              We estimated your <strong>{specs.guessedFields.join(", ")}</strong> based on your Mac model.
-              Please verify {specs.guessedFields.length === 1 ? "it is" : "they are"} correct or adjust below.
+              We estimated your <strong className="text-base-content">{specs.guessedFields.join(", ")}</strong> from your Mac model.
+              Check {specs.guessedFields.length === 1 ? "it" : "them"} below.
             </span>
           </div>
         )}
 
-        {!detecting && isAuto && (() => {
-          const nonGuessed = unmatchedFields.filter(f => !specs.guessedFields?.includes(f));
-          return nonGuessed.length > 0 ? (
-            <div role="alert" className="alert alert-warning text-sm">
-              <HiExclamation className="h-5 w-5 shrink-0" />
-              <span>
-                Specs are estimated and may not be accurate. Download the hardware scanner above for precise detection.
-              </span>
-            </div>
-          ) : null;
-        })()}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Operating System</span>
-              {!detecting && isEstimated("os") && specs.os && (
-                <span className="label-text-alt text-warning">*Estimated</span>
-              )}
-            </label>
-            <div className="relative">
-              <AutocompleteInput
-                value={specs.os}
-                onChange={(v) => update("os", v)}
-                onSubmit={onSubmit}
-                options={osList}
-                placeholder={detecting ? "Detecting..." : "e.g., Windows 10"}
-                disabled={detecting}
-                className={emptyClass(!specs.os.trim())}
-              />
-              {detecting && <span className="loading loading-spinner loading-sm absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40" />}
-            </div>
+        {!detecting && isAuto && nonGuessedUnmatched.length > 0 && (
+          <div role="alert" className="notice border-l-warning">
+            <LuTriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            <span>
+              Browsers only expose part of your hardware, so some values are estimates.
+              For exact specs, use the scanner above.
+            </span>
           </div>
+        )}
 
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">CPU</span>
-              {!detecting && isEstimated("cpu") && specs.cpu && (
-                <span className="label-text-alt text-warning">*Estimated</span>
-              )}
-            </label>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-5 md:grid-cols-6">
+          <Field id="spec-cpu" icon={LuCpu} label="Processor" estimated={isEstimated("cpu") && !!specs.cpu} className="md:col-span-3">
             <div className="relative">
               <AutocompleteInput
+                id="spec-cpu"
+                name="cpu"
                 value={specs.cpu}
                 onChange={(v) => update("cpu", v)}
                 onSubmit={onSubmit}
                 options={cpuList}
-                placeholder={detecting ? "Detecting..." : (specs.cpu ? "e.g., Intel Core i7-12700K" : "Not detectable — enter your CPU model")}
+                placeholder={detecting ? "Detecting…" : (specs.cpu ? "e.g. Intel Core i7-12700K" : "Couldn't detect it. Type your CPU model")}
                 disabled={detecting}
                 className={emptyClass(!specs.cpu.trim())}
               />
-              {detecting && <span className="loading loading-spinner loading-sm absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40" />}
+              {detecting && <DetectingSpinner />}
             </div>
-          </div>
+          </Field>
 
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">GPU</span>
-              {!detecting && isEstimated("gpu") && specs.gpu && (
-                <span className="label-text-alt text-warning">*Estimated</span>
-              )}
-            </label>
+          <Field id="spec-gpu" icon={LuMonitor} label="Graphics card" estimated={isEstimated("gpu") && !!specs.gpu} className="md:col-span-3">
             <div className="relative">
               <AutocompleteInput
+                id="spec-gpu"
+                name="gpu"
                 value={specs.gpu}
                 onChange={(v) => update("gpu", v)}
                 onSubmit={onSubmit}
                 options={gpuList}
-                placeholder={detecting ? "Detecting..." : "e.g., NVIDIA RTX 4070"}
+                placeholder={detecting ? "Detecting…" : "e.g. NVIDIA RTX 4070"}
                 disabled={detecting}
                 className={emptyClass(!specs.gpu.trim())}
               />
-              {detecting && <span className="loading loading-spinner loading-sm absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40" />}
+              {detecting && <DetectingSpinner />}
             </div>
-          </div>
+          </Field>
 
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">
-                RAM (GB)
-                {!detecting && specs.ramApproximate && specs.ramGB != null && (
-                  <span className="text-base-content/50 font-normal"> (~{specs.ramGB} GB approximate)</span>
-                )}
-              </span>
-              {!detecting && isEstimated("ramGB") && specs.ramGB != null && (
-                <span className="label-text-alt text-warning">*Estimated</span>
-              )}
-            </label>
+          <Field id="spec-os" icon={LuLaptop} label="Operating system" estimated={isEstimated("os") && !!specs.os} className="md:col-span-2">
+            <div className="relative">
+              <AutocompleteInput
+                id="spec-os"
+                name="os"
+                value={specs.os}
+                onChange={(v) => update("os", v)}
+                onSubmit={onSubmit}
+                options={osList}
+                placeholder={detecting ? "Detecting…" : "e.g. Windows 11"}
+                disabled={detecting}
+                className={emptyClass(!specs.os.trim())}
+              />
+              {detecting && <DetectingSpinner />}
+            </div>
+          </Field>
+
+          <Field
+            id="spec-ram"
+            icon={LuMemoryStick}
+            label="Memory"
+            note={!detecting && specs.ramApproximate && specs.ramGB != null ? "approx." : undefined}
+            estimated={isEstimated("ramGB") && specs.ramGB != null}
+            className="md:col-span-2"
+          >
             <div className="relative">
               <input
+                id="spec-ram"
+                name="ram"
                 type="number"
-                className={`input input-bordered w-full ${emptyClass(specs.ramGB == null)}`}
+                min={0}
+                inputMode="decimal"
+                className={`input input-bordered w-full pr-12 tabular-nums ${emptyClass(specs.ramGB == null)}`}
                 value={specs.ramGB ?? ""}
                 onChange={(e) =>
                   update("ramGB", e.target.value ? parseFloat(e.target.value) : null)
                 }
                 onKeyDown={handleKeyDown}
-                placeholder={detecting ? "Detecting..." : "e.g., 16"}
+                placeholder={detecting ? "Detecting…" : "16"}
                 disabled={detecting}
               />
-              {detecting && <span className="loading loading-spinner loading-sm absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40" />}
+              {detecting ? <DetectingSpinner /> : <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-base-content/40">GB</span>}
             </div>
-          </div>
+          </Field>
 
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Available Storage (GB)</span>
-              {!detecting && isEstimated("storageGB") && (
-                <span className="label-text-alt text-warning">*Estimated</span>
-              )}
-            </label>
+          <Field
+            id="spec-storage"
+            icon={LuHardDrive}
+            label="Free storage"
+            estimated={isEstimated("storageGB")}
+            className="md:col-span-2"
+          >
             <div className="relative">
               <input
+                id="spec-storage"
+                name="storage"
                 type="number"
-                className={`input input-bordered w-full ${emptyClass(specs.storageGB == null)}`}
+                min={0}
+                inputMode="decimal"
+                className={`input input-bordered w-full pr-12 tabular-nums ${emptyClass(specs.storageGB == null)}`}
                 value={specs.storageGB ?? ""}
                 onChange={(e) =>
                   update("storageGB", e.target.value ? parseFloat(e.target.value) : null)
                 }
                 onKeyDown={handleKeyDown}
-                placeholder={detecting ? "Detecting..." : "e.g., 500"}
+                placeholder={detecting ? "Detecting…" : "500"}
                 disabled={detecting}
               />
-              {detecting && <span className="loading loading-spinner loading-sm absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40" />}
+              {detecting ? <DetectingSpinner /> : <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-base-content/40">GB</span>}
             </div>
-          </div>
+          </Field>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
