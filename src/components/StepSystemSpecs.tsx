@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserSpecs, GameDetails, Platform } from "@/types";
+import { UserSpecs, GameDetails } from "@/types";
 import SystemSpecs from "@/components/SystemSpecs";
 import HardwareScanner from "@/components/HardwareScanner";
 import ActionBar from "@/components/ActionBar";
 import { LuX, LuCircleCheck, LuTriangleAlert, LuHistory } from "react-icons/lu";
-import { savePendingGame } from "@/lib/pendingGameCheck";
 
 interface Props {
   specs: UserSpecs;
@@ -17,7 +16,6 @@ interface Props {
   detecting: boolean;
   unmatchedFields: string[];
   game: GameDetails | null;
-  platform?: Platform;
   onBack: () => void;
   onConfirm: () => void;
   onScriptImport?: (specs: UserSpecs) => void;
@@ -38,7 +36,6 @@ export default function StepSystemSpecs({
   detecting,
   unmatchedFields,
   game,
-  platform,
   onBack,
   onConfirm,
   onScriptImport,
@@ -136,13 +133,6 @@ export default function StepSystemSpecs({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onConfirm, hasEmptyField]);
 
-  function handleScannerDownload() {
-    // Save the current game context so we can restore it when returning from scanner
-    if (game?.appid && platform) {
-      savePendingGame(game.appid, platform, game.name);
-    }
-  }
-
   return (
     <>
       <div className="animate-fadeIn flex flex-col gap-5">
@@ -190,7 +180,12 @@ export default function StepSystemSpecs({
           )}
         </div>
 
-        {onScriptImport && <HardwareScanner onImport={onScriptImport} onDownload={handleScannerDownload} />}
+        {onScriptImport && (
+          <HardwareScanner
+            onImport={onScriptImport}
+            game={game ? { appid: game.appid, source: game.source ?? "steam" } : null}
+          />
+        )}
 
         <SystemSpecs
           specs={specs}

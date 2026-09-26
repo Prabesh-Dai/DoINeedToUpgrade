@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
+import { gameReturnSuffix } from "@/lib/scannerGameParam";
 
 export async function GET(request: NextRequest) {
   const host = request.headers.get("host") ?? "doineedtoupgrade.com";
   const proto = request.headers.get("x-forwarded-proto") ?? "https";
   const baseUrl = `${proto}://${host}`;
 
-  const script = generateBashScript(baseUrl);
+  const script = generateBashScript(baseUrl, gameReturnSuffix(request.nextUrl.searchParams));
 
   return new Response(script, {
     headers: {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-function generateBashScript(baseUrl: string): string {
+function generateBashScript(baseUrl: string, returnSuffix: string): string {
   return `#!/usr/bin/env bash
 set -euo pipefail
 
@@ -231,7 +232,7 @@ if [[ -z "\$token" ]]; then
 fi
 
 # --- Open browser ---
-url="${baseUrl}/?import=\$token"
+url="${baseUrl}/?import=\$token${returnSuffix}"
 echo "Opening browser..."
 
 if [[ "\$(uname)" == "Darwin" ]]; then

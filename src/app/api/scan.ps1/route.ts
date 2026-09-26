@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
+import { gameReturnSuffix } from "@/lib/scannerGameParam";
 
 export async function GET(request: NextRequest) {
   const host = request.headers.get("host") ?? "doineedtoupgrade.com";
   const proto = request.headers.get("x-forwarded-proto") ?? "https";
   const baseUrl = `${proto}://${host}`;
 
-  const script = generatePowerShellScript(baseUrl);
+  const script = generatePowerShellScript(baseUrl, gameReturnSuffix(request.nextUrl.searchParams));
 
   return new Response(script, {
     headers: {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-function generatePowerShellScript(baseUrl: string): string {
+function generatePowerShellScript(baseUrl: string, returnSuffix: string): string {
   return `# DoINeedToUpgrade Hardware Scanner
 # Usage: irm ${baseUrl}/api/scan.ps1 | iex
 
@@ -127,7 +128,7 @@ if (-not \$token) {
 }
 
 # --- Open browser ---
-\$url = "${baseUrl}/?import=\$token"
+\$url = "${baseUrl}/?import=\$token${returnSuffix}"
 Write-Host "Opening browser..."
 Start-Process \$url
 

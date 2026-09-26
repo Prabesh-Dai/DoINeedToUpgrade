@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { UserSpecs } from "@/types";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
+import { gameQuery, ScannerGame } from "@/lib/scannerGameParam";
 import { LuCircleCheck, LuTriangleAlert, LuDownload, LuClipboardPaste, LuCopy, LuCheck, LuScanLine, LuTerminal } from "react-icons/lu";
 
 interface Props {
   onImport: (specs: UserSpecs) => void;
-  onDownload?: () => void;
+  /** Game being checked; the script command carries it so the scan returns straight to results */
+  game?: ScannerGame | null;
 }
 
 type ClientPlatform = "windows" | "macos" | "linux";
@@ -31,7 +33,8 @@ type StepGroup = {
 type PlatformInfo = {
   label: string;
   appFiles: { label: string; file: string }[];
-  terminalCommand: { label: string; command: string };
+  // {URL} is replaced with the script URL (quoted, since it may contain "?")
+  terminalCommand: { label: string; path: string; command: string };
   stepGroups: StepGroup[];
 };
 
@@ -39,7 +42,7 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
   windows: {
     label: "Windows",
     appFiles: [{ label: "Windows", file: "/downloads/DoINeedToUpgrade.exe" }],
-    terminalCommand: { label: "PowerShell", command: "irm {BASE}/api/scan.ps1 | iex" },
+    terminalCommand: { label: "PowerShell", path: "/api/scan.ps1", command: 'irm "{URL}" | iex' },
     stepGroups: [
       { primary: "Double-click the downloaded file to run." },
       { primary: "The scanner will detect your specs and open this page with them imported automatically." },
@@ -51,7 +54,7 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
       { label: "Apple Silicon (M1 and newer)", file: "/downloads/DoINeedToUpgrade-Mac-AppleSilicon.dmg" },
       { label: "Intel Mac", file: "/downloads/DoINeedToUpgrade-Mac-Intel.dmg" },
     ],
-    terminalCommand: { label: "Terminal", command: "curl -s {BASE}/api/scan | bash" },
+    terminalCommand: { label: "Terminal", path: "/api/scan", command: 'curl -s "{URL}" | bash' },
     stepGroups: [
       { primary: "Open the .dmg and drag the app to Applications." },
       {
@@ -70,7 +73,7 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
       { label: ".deb (Ubuntu/Debian)", file: "/downloads/DoINeedToUpgrade-Linux.deb" },
       { label: ".AppImage (Other)", file: "/downloads/DoINeedToUpgrade-Linux.AppImage" },
     ],
-    terminalCommand: { label: "Terminal", command: "curl -s {BASE}/api/scan | bash" },
+    terminalCommand: { label: "Terminal", path: "/api/scan", command: 'curl -s "{URL}" | bash' },
     stepGroups: [
       {
         primary: "For .deb: right-click → Open With → Software Install, then click Install.",
@@ -83,7 +86,7 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
   },
 };
 
-export default function HardwareScanner({ onImport, onDownload }: Props) {
+export default function HardwareScanner({ onImport, game }: Props) {
   const collapseRef = useRef<HTMLInputElement>(null);
   const [pasteValue, setPasteValue] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -137,7 +140,9 @@ export default function HardwareScanner({ onImport, onDownload }: Props) {
   }
 
   const info = platformInfo[clientPlatform];
-  const command = info.terminalCommand.command.replace("{BASE}", typeof window !== "undefined" ? window.location.origin : "");
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const scriptUrl = `${origin}${info.terminalCommand.path}${game ? `?${gameQuery(game)}` : ""}`;
+  const command = info.terminalCommand.command.replace("{URL}", scriptUrl);
 
   return (
     <>
@@ -170,8 +175,7 @@ export default function HardwareScanner({ onImport, onDownload }: Props) {
                 <button
                   className="btn btn-sm btn-square btn-ghost h-auto shrink-0 rounded-none border-l border-base-content/10"
                   onClick={async () => {
-                    await navigator.clipboard.writeText(info.terminalCommand.command.replace("{BASE}", window.location.origin));
-                    onDownload?.();
+                    await navigator.clipboard.writeText(command);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
@@ -197,7 +201,6 @@ export default function HardwareScanner({ onImport, onDownload }: Props) {
                     key={app.file}
                     href={app.file}
                     className="btn btn-sm btn-outline h-auto min-h-9 w-full justify-start py-2 text-left leading-snug"
-                    onClick={() => onDownload?.()}
                   >
                     <LuDownload className="h-4 w-4 shrink-0" />
                     {info.appFiles.length > 1 ? app.label : "Download scanner"}

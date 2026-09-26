@@ -11,7 +11,8 @@ import { useBenchmarks } from "@/lib/useBenchmarks";
 import { detectClientSpecs } from "@/lib/detectClientSpecs";
 import { fuzzyMatchHardware } from "@/lib/fuzzyMatch";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
-import { getPendingGame, clearPendingGame } from "@/lib/pendingGameCheck";
+import { getPendingGame, clearPendingGame, savePendingGame } from "@/lib/pendingGameCheck";
+import { parseGameParams, ScannerGame } from "@/lib/scannerGameParam";
 import WizardStepper from "@/components/WizardStepper";
 import StepGameSelect from "@/components/StepGameSelect";
 import StepSystemSpecs from "@/components/StepSystemSpecs";
@@ -85,8 +86,57 @@ function Home() {
     return () => clearTimeout(timer);
   }, [showUrlImportToast]);
 
+  // After a scanner import, go straight to results for the game the user had picked:
+  // carried in the return URL by the scripts, or remembered locally for the downloaded apps.
+  // With no game (or if it fails to load), fall back to scanner mode: specs first, then pick a game.
+  async function resumeAfterImport(imported: UserSpecs, detected: Platform, returnGame: ScannerGame | null) {
+    const pending = getPendingGame();
+    clearPendingGame();
+    const target = returnGame ?? (pending ? { appid: pending.appid, source: pending.source } : null);
+    if (!target) {
+      setImportedFromScanner(true);
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({ appid: String(target.appid), source: target.source });
+      const res = await fetch(`/api/game?${params}`);
+      if (!res.ok) throw new Error("Failed to load game details");
+      const data: GameDetails = await res.json();
+      setGame(data);
+      setLastGameSource(target.source);
+
+      const selectedPlatform = data.availablePlatforms.includes(detected)
+        ? detected
+        : data.availablePlatforms[0] ?? "windows";
+      setPlatform(selectedPlatform);
+
+      const platformReqs = data.platformRequirements[selectedPlatform] ?? data.requirements;
+      const newMin = platformReqs.minimum ?? { ...emptyReqs };
+      const newRec = platformReqs.recommended ?? { ...emptyReqs };
+      setMinReqs(newMin);
+      setRecReqs(newRec);
+
+      const minArg = hasAnyField(newMin) ? newMin : null;
+      const recArg = hasAnyField(newRec) ? newRec : null;
+      const { items: compItems, scores } = compareSpecs(imported, minArg, recArg, cpuScores, gpuScores);
+      setComparison(compItems);
+      setHardwareScores(scores);
+      setSpecsConfirmed(true);
+      setSpecsDirty(false);
+      setStep(3);
+      setMaxReached(3);
+      setImportedFromScanner(false);
+    } catch {
+      setImportedFromScanner(true);
+    }
+  }
+
   // Load specs from URL params, localStorage, or detect automatically
   useEffect(() => {
+    // Read before the URL gets cleaned up below
+    const returnGame = parseGameParams(searchParams);
+
     // Priority 0: Check URL params for import token (from shell script)
     const importToken = searchParams.get("import");
     if (importToken) {
@@ -126,43 +176,7 @@ function Home() {
           setDetecting(false);
           setShowUrlImportToast(true);
 
-          // Check for pending game (same logic as ?specs= path)
-          const pendingGame = getPendingGame();
-          if (pendingGame) {
-            clearPendingGame();
-            try {
-              const gameRes = await fetch(`/api/game?appid=${pendingGame.appid}`);
-              if (!gameRes.ok) throw new Error("Failed to load game details");
-              const gameData: GameDetails = await gameRes.json();
-              setGame(gameData);
-
-              const selectedPlatform = gameData.availablePlatforms.includes(detected)
-                ? detected
-                : gameData.availablePlatforms[0] ?? "windows";
-              setPlatform(selectedPlatform);
-
-              const platformReqs = gameData.platformRequirements[selectedPlatform] ?? gameData.requirements;
-              const newMin = platformReqs.minimum ?? { os: "", cpu: "", gpu: "", ram: "", storage: "" };
-              const newRec = platformReqs.recommended ?? { os: "", cpu: "", gpu: "", ram: "", storage: "" };
-              setMinReqs(newMin);
-              setRecReqs(newRec);
-
-              const hasMin = Object.values(newMin).some((v) => v.trim() !== "");
-              const hasRec = Object.values(newRec).some((v) => v.trim() !== "");
-              const { items: compItems, scores } = compareSpecs(imported, hasMin ? newMin : null, hasRec ? newRec : null, cpuScores, gpuScores);
-              setComparison(compItems);
-              setHardwareScores(scores);
-              setSpecsConfirmed(true);
-              setSpecsDirty(false);
-              setStep(3);
-              setMaxReached(3);
-              setImportedFromScanner(false);
-            } catch {
-              setImportedFromScanner(true);
-            }
-          } else {
-            setImportedFromScanner(true);
-          }
+          await resumeAfterImport(imported, detected, returnGame);
         } catch {
           // Token expired/invalid — fall through to normal detection
           setDetecting(false);
@@ -195,53 +209,7 @@ function Home() {
           window.history.replaceState({}, "", url.pathname);
         }
 
-        // Check if there's a pending game to restore (downloaded scanner from "Your System" step)
-        const pendingGame = getPendingGame();
-        if (pendingGame) {
-          clearPendingGame();
-          // Fetch game and go directly to results
-          (async () => {
-            try {
-              const res = await fetch(`/api/game?appid=${pendingGame.appid}`);
-              if (!res.ok) throw new Error("Failed to load game details");
-              const data: GameDetails = await res.json();
-              setGame(data);
-
-              // Use pending platform or auto-select based on user's OS
-              const selectedPlatform = data.availablePlatforms.includes(detected)
-                ? detected
-                : data.availablePlatforms[0] ?? "windows";
-              setPlatform(selectedPlatform);
-
-              const platformReqs = data.platformRequirements[selectedPlatform] ?? data.requirements;
-              const newMin = platformReqs.minimum ?? { os: "", cpu: "", gpu: "", ram: "", storage: "" };
-              const newRec = platformReqs.recommended ?? { os: "", cpu: "", gpu: "", ram: "", storage: "" };
-              setMinReqs(newMin);
-              setRecReqs(newRec);
-
-              // Run comparison
-              const hasMin = Object.values(newMin).some((v) => v.trim() !== "");
-              const hasRec = Object.values(newRec).some((v) => v.trim() !== "");
-              const minArg = hasMin ? newMin : null;
-              const recArg = hasRec ? newRec : null;
-              const { items: compItems, scores } = compareSpecs(decoded, minArg, recArg, cpuScores, gpuScores);
-              setComparison(compItems);
-              setHardwareScores(scores);
-              setSpecsConfirmed(true);
-              setSpecsDirty(false);
-              setStep(3);
-              setMaxReached(3);
-              // Normal mode - not scanner mode
-              setImportedFromScanner(false);
-            } catch {
-              // Fall back to scanner mode if game fetch fails
-              setImportedFromScanner(true);
-            }
-          })();
-        } else {
-          // No pending game - use scanner mode
-          setImportedFromScanner(true);
-        }
+        resumeAfterImport(decoded, detected, returnGame);
         return;
       }
     }
@@ -301,6 +269,8 @@ function Home() {
 
   // Handle ?game= parameter from game page CTA
   useEffect(() => {
+    // Scanner return URLs also carry ?game=; the import flow above handles those
+    if (searchParams.get("import") || searchParams.get("specs")) return;
     const gameParam = searchParams.get("game");
     if (gameParam && /^\d+$/.test(gameParam)) {
       // Clean up URL
@@ -393,6 +363,7 @@ function Home() {
 
       const data = await res.json();
       setGame(data as GameDetails);
+      savePendingGame(id, source, data.name);
 
       // Auto-select platform: prefer user's OS, fall back to first available
       const selectedPlatform = data.availablePlatforms.includes(userPlatform)
@@ -426,6 +397,7 @@ function Home() {
   }
 
   function handleManualMode() {
+    clearPendingGame();
     setManualMode(true);
     setGame(null);
     setMinReqs({ ...emptyReqs });
@@ -456,6 +428,7 @@ function Home() {
   }
 
   function handleCheckAnother() {
+    clearPendingGame();
     setGame(null);
     setComparison(null);
     setHardwareScores(null);
@@ -633,7 +606,6 @@ function Home() {
           detecting={detecting}
           unmatchedFields={unmatchedFields}
           game={game}
-          platform={platform}
           onBack={() => goToStep(1)}
           onConfirm={handleSpecsConfirm}
           onScriptImport={handleScriptImport}
