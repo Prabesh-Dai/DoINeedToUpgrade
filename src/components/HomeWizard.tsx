@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { UserSpecs, GameDetails, GameRequirements, ComparisonItem, Platform, GameSource, HardwareScores } from "@/types";
 import { LuCircleCheck, LuX } from "react-icons/lu";
 import { compareSpecs } from "@/lib/compareSpecs";
-import { estimateFps } from "@/lib/fpsEstimate";
+import { estimateFps, estimateUpgrades } from "@/lib/fpsEstimate";
 import { computeVerdict } from "@/lib/computeVerdict";
 import { useBenchmarks } from "@/lib/useBenchmarks";
 import { detectClientSpecs } from "@/lib/detectClientSpecs";
@@ -313,6 +313,7 @@ function Home() {
 
   const verdict = comparison ? computeVerdict(comparison) : null;
   const fpsEstimate = hardwareScores ? estimateFps(hardwareScores) : null;
+  const upgradeImpact = hardwareScores ? estimateUpgrades(hardwareScores, specs.cpu, cpuScores, gpuScores) : null;
 
   const runComparison = useCallback(
     (min?: GameRequirements, rec?: GameRequirements) => {
@@ -663,6 +664,7 @@ function Home() {
           availablePlatforms={game?.availablePlatforms ?? []}
           onPlatformChange={handlePlatformChange}
           fpsEstimate={fpsEstimate}
+          upgradeImpact={upgradeImpact}
         />
       )}
 

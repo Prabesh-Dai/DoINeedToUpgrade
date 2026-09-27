@@ -1,4 +1,5 @@
-import { HardwareScores, FpsEstimate } from "@/types";
+import { HardwareScores, FpsEstimate, UpgradeImpact, UpgradeOption, VerdictResult, ComparisonItem } from "@/types";
+import { upgradeGpus, upgradeCpus } from "@/lib/hardwareData";
 
 const REC_ANCHOR_FPS = 60;
 const MIN_ANCHOR_FPS = 30;
@@ -10,6 +11,23 @@ const MAX_FPS        = 300;
 // better than a power function: a score ratio of 3x can represent a real-world gap
 // of 5x, so basing predictions on the raw score difference is more accurate.
 const SCORE_SCALE    = 25;
+// Exponent for the soft minimum that combines CPU and GPU. Frames wait on
+// whichever part is slower, so the weaker one should dominate. Higher = closer
+// to a hard min(). Kept soft because the per-part numbers come from requirement
+// lists, which are rough (CPU ones especially). At 2, a much stronger partner
+// adds at most ~41%.
+const SOFT_MIN_POWER = 2;
+// Share of the soft minimum that the CPU side gets. Publishers tend to list
+// CPUs well above what the game needs for 60fps, so the CPU estimate runs low
+// and counts for less. Equal inputs still give the same value.
+const CPU_WEIGHT     = 0.3;
+// How lopsided the two sides can be and still count as a good match
+// (a ratio of 1.3 is about a 15% FPS gap at SOFT_MIN_POWER 2)
+const BALANCED_RATIO = 1.3;
+// An example upgrade should be at least this much faster than the user's part.
+// Near the top of the list we settle for MIN_UPGRADE_STEP instead.
+const UPGRADE_STEP     = 1.25;
+const MIN_UPGRADE_STEP = 1.1;
 
 /**
  * Estimate the FPS contribution of a single hardware component.
@@ -130,10 +148,14 @@ export function estimateFps(scores: HardwareScores): FpsEstimate {
       mid = Math.min(fpsByGpu, fpsByCpu);
       bottleneck = fpsByGpu <= fpsByCpu ? "gpu" : "cpu";
     } else {
-      // Both pass — geometric mean prevents one outlier from dominating
-      mid = Math.sqrt(fpsByGpu * fpsByCpu);
-      bottleneck = Math.abs(fpsByGpu - fpsByCpu) <= Math.min(fpsByGpu, fpsByCpu) * 0.15
-        ? "balanced" : fpsByGpu < fpsByCpu ? "gpu" : "cpu";
+      // Both pass — weighted soft minimum: the slower part sets the pace, but
+      // a much faster partner still helps a little.
+      const gpuTerm = (1 - CPU_WEIGHT) * Math.pow(fpsByGpu, -SOFT_MIN_POWER);
+      const cpuTerm = CPU_WEIGHT * Math.pow(fpsByCpu, -SOFT_MIN_POWER);
+      mid = Math.pow(gpuTerm + cpuTerm, -1 / SOFT_MIN_POWER);
+      // The bigger term is the one dragging the result down
+      bottleneck = Math.max(gpuTerm, cpuTerm) / Math.min(gpuTerm, cpuTerm) <= BALANCED_RATIO
+        ? "balanced" : gpuTerm > cpuTerm ? "gpu" : "cpu";
     }
   } else if (fpsByGpu !== null) {
     mid = fpsByGpu;
@@ -164,4 +186,113 @@ export function estimateFps(scores: HardwareScores): FpsEstimate {
     bottleneck,
     confidence,
   };
+}
+
+/**
+ * Why the FPS estimate should be hidden by default, if at all. It can't be
+ * trusted when the PC fails the minimum or the requirements are for another OS.
+ */
+export function fpsHiddenReason(
+  verdict: VerdictResult | null,
+  comparison: ComparisonItem[] | null,
+): "os" | "fail" | null {
+  const osMismatch = comparison?.some(
+    (item) => item.label === "Operating System" && item.minStatus === "warn"
+  ) ?? false;
+  if (osMismatch) return "os";
+  if (verdict?.verdict === "fail") return "fail";
+  return null;
+}
+
+/** "NVIDIA GeForce RTX 5060" -> "RTX 5060", "AMD Ryzen 5 7600" -> "Ryzen 5 7600" */
+export function shortName(name: string): string {
+  return name.replace(/^(NVIDIA GeForce|AMD Radeon|AMD|Intel)\s+/, "");
+}
+
+/**
+ * Slowest example part that is a clear step up from the user's. If nothing is
+ * that much faster, the fastest part that is still a real step up.
+ * Parts from `preferVendor` win when one qualifies, since switching CPU
+ * brands means a new motherboard too.
+ */
+function pickUpgrade(
+  userScore: number,
+  recScore: number | null,
+  candidates: string[],
+  scoreTable: Record<string, number>,
+  preferVendor: string | null = null,
+): { name: string; score: number } | null {
+  const pool = candidates
+    .filter((name) => scoreTable[name] != null)
+    .map((name) => ({ name, score: scoreTable[name] }))
+    .sort((a, b) => a.score - b.score);
+  const prefer = (list: typeof pool) =>
+    (preferVendor ? list.find((c) => c.name.startsWith(preferVendor)) : undefined) ?? list[0] ?? null;
+
+  const bar = Math.max(recScore ?? 0, userScore * UPGRADE_STEP);
+  const clearing = pool.filter((c) => c.score >= bar);
+  if (clearing.length > 0) return prefer(clearing);
+
+  const fastestFirst = pool.filter((c) => c.score >= userScore * MIN_UPGRADE_STEP).reverse();
+  return prefer(fastestFirst);
+}
+
+function cpuVendor(cpu: string): string | null {
+  if (/intel|core\s+(i\d|ultra)/i.test(cpu)) return "Intel";
+  if (/amd|ryzen/i.test(cpu)) return "AMD";
+  return null;
+}
+
+/**
+ * Estimate how much FPS each upgrade would add, by rerunning the estimate
+ * with one part swapped for an example upgrade. Only works when we know the
+ * user's CPU and GPU and the game lists both recommended parts.
+ */
+export function estimateUpgrades(
+  scores: HardwareScores,
+  userCpu: string,
+  cpuScores: Record<string, number>,
+  gpuScores: Record<string, number>,
+): UpgradeImpact | null {
+  const current = estimateFps(scores);
+  if (current.confidence !== "good") return null;
+  if (scores.userGpuScore === null || scores.userCpuScore === null) return null;
+
+  const gain = (next: HardwareScores) => {
+    const fps = estimateFps(next).mid;
+    return { fps, gain: Math.max(0, fps - current.mid) };
+  };
+
+  const gpuPick = pickUpgrade(scores.userGpuScore, scores.recGpuScore, upgradeGpus, gpuScores);
+  const cpuPick = pickUpgrade(scores.userCpuScore, scores.recCpuScore, upgradeCpus, cpuScores, cpuVendor(userCpu));
+
+  const options: UpgradeOption[] = [
+    gpuPick
+      ? { component: "gpu", target: shortName(gpuPick.name), ...gain({ ...scores, userGpuScore: gpuPick.score }) }
+      : { component: "gpu", target: null, fps: current.mid, gain: 0 },
+    cpuPick
+      ? { component: "cpu", target: shortName(cpuPick.name), ...gain({ ...scores, userCpuScore: cpuPick.score }) }
+      : { component: "cpu", target: null, fps: current.mid, gain: 0 },
+  ];
+
+  // RAM only matters when there's less than the game asks for
+  const ramTarget = scores.recRamGB ?? scores.minRamGB;
+  if (scores.userRamGB !== null && ramTarget !== null) {
+    options.push(scores.userRamGB < ramTarget
+      ? { component: "ram", target: `${ramTarget} GB`, ...gain({ ...scores, userRamGB: ramTarget }) }
+      : { component: "ram", target: null, fps: current.mid, gain: 0 });
+  }
+
+  options.sort((a, b) => b.gain - a.gain);
+
+  // When CPU and GPU are evenly matched, upgrading one barely helps, so show both together
+  if (current.bottleneck === "balanced" && gpuPick && cpuPick) {
+    options.push({
+      component: "both",
+      target: `${shortName(gpuPick.name)} and ${shortName(cpuPick.name)}`,
+      ...gain({ ...scores, userGpuScore: gpuPick.score, userCpuScore: cpuPick.score }),
+    });
+  }
+
+  return { bottleneck: current.bottleneck, currentFps: current.mid, options };
 }

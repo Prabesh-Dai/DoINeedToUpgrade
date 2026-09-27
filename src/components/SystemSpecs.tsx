@@ -3,7 +3,7 @@
 import { UserSpecs, DetectionSource } from "@/types";
 import AutocompleteInput from "./AutocompleteInput";
 import { osList } from "@/lib/hardwareData";
-import { LuRotateCcw, LuTriangleAlert, LuInfo, LuCpu, LuMonitor, LuMemoryStick, LuHardDrive, LuLaptop, LuScanLine, LuWandSparkles } from "react-icons/lu";
+import { LuRotateCcw, LuTriangleAlert, LuInfo, LuCpu, LuMonitor, LuMemoryStick, LuHardDrive, LuLaptop } from "react-icons/lu";
 
 interface Props {
   specs: UserSpecs;
@@ -21,6 +21,14 @@ interface Props {
 const sourceLabels: Record<DetectionSource, string> = {
   auto: "Detected from your browser. Fix anything that looks off.",
   script: "Detected by the hardware scanner.",
+};
+
+// Unmatched field names (as HomeWizard reports them) to the spec keys the user edits
+const unmatchedKeys: Record<string, keyof UserSpecs> = {
+  CPU: "cpu",
+  GPU: "gpu",
+  RAM: "ramGB",
+  Storage: "storageGB",
 };
 
 function Field({
@@ -82,26 +90,28 @@ export default function SystemSpecs({ specs, onChange, onSubmit, dirty, cpuList,
     }
   }
 
-  const nonGuessedUnmatched = unmatchedFields.filter((f) => !specs.guessedFields?.includes(f));
-  const SourceIcon = specs.detectionSource === "script" ? LuScanLine : LuWandSparkles;
+  // Fields the user has typed in themselves are no longer estimates
+  const edited = (f: string) => manual.includes(unmatchedKeys[f]);
+  const uncheckedGuesses = (specs.guessedFields ?? []).filter((f) => !edited(f));
+  const nonGuessedUnmatched = unmatchedFields.filter(
+    (f) => !specs.guessedFields?.includes(f) && !edited(f)
+  );
 
   return (
     <section className="card w-full max-w-full overflow-visible rounded-md">
       <div className="card-body gap-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold">Your hardware</h2>
-            <p className="mt-1 flex items-center gap-2 text-sm text-base-content/60">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+            <h2 className="shrink-0 text-lg font-semibold">Your hardware</h2>
+            <span aria-hidden="true" className="hidden h-4 w-px shrink-0 bg-base-content/15 sm:block" />
+            <p className="flex min-w-0 items-center gap-2 text-sm text-base-content/60">
               {detecting ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
                   Detecting your hardware…
                 </>
               ) : (
-                <>
-                  <SourceIcon className="h-4 w-4 shrink-0 text-base-content/40" />
-                  {sourceLabels[specs.detectionSource ?? "auto"]}
-                </>
+                sourceLabels[specs.detectionSource ?? "auto"]
               )}
             </p>
           </div>
@@ -118,12 +128,12 @@ export default function SystemSpecs({ specs, onChange, onSubmit, dirty, cpuList,
           )}
         </div>
 
-        {!detecting && isAuto && specs.guessedFields && specs.guessedFields.length > 0 && (
+        {!detecting && isAuto && uncheckedGuesses.length > 0 && (
           <div role="alert" className="notice border-l-info">
             <LuInfo className="mt-0.5 h-4 w-4 shrink-0 text-info" />
             <span>
-              We estimated your <strong className="text-base-content">{specs.guessedFields.join(", ")}</strong> from your Mac model.
-              Check {specs.guessedFields.length === 1 ? "it" : "them"} below.
+              We estimated your <strong className="text-base-content">{uncheckedGuesses.join(", ")}</strong> from your Mac model.
+              Check {uncheckedGuesses.length === 1 ? "it" : "them"} below.
             </span>
           </div>
         )}
@@ -194,7 +204,7 @@ export default function SystemSpecs({ specs, onChange, onSubmit, dirty, cpuList,
             id="spec-ram"
             icon={LuMemoryStick}
             label="Memory"
-            note={!detecting && specs.ramApproximate && specs.ramGB != null ? "approx." : undefined}
+            note={!detecting && specs.ramApproximate && specs.ramGB != null && !manual.includes("ramGB") ? "approx." : undefined}
             estimated={isEstimated("ramGB") && specs.ramGB != null}
             className="md:col-span-2"
           >

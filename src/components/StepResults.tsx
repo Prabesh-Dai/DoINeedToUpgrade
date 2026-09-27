@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { GameDetails, GameRequirements, VerdictResult, ComparisonItem, Platform, FpsEstimate } from "@/types";
+import { GameDetails, GameRequirements, VerdictResult, ComparisonItem, Platform, FpsEstimate, UpgradeImpact } from "@/types";
 import ComparisonResult from "@/components/ComparisonResult";
 import RequirementsEditor from "@/components/RequirementsEditor";
 import VerdictPanel from "@/components/VerdictPanel";
 import FpsStat from "@/components/FpsStat";
+import FpsBreakdown from "@/components/FpsBreakdown";
 import { LuInfo, LuChevronDown, LuSearch, LuPencil, LuSlidersHorizontal, LuGamepad2 } from "react-icons/lu";
 
 const platformLabels: Record<Platform, string> = {
@@ -29,6 +30,7 @@ interface Props {
   availablePlatforms: Platform[];
   onPlatformChange: (platform: Platform) => void;
   fpsEstimate?: FpsEstimate | null;
+  upgradeImpact?: UpgradeImpact | null;
 }
 
 export default function StepResults({
@@ -46,6 +48,7 @@ export default function StepResults({
   availablePlatforms,
   onPlatformChange,
   fpsEstimate,
+  upgradeImpact,
 }: Props) {
   const [showEditor, setShowEditor] = useState(false);
 
@@ -124,6 +127,13 @@ export default function StepResults({
       </section>
 
       {verdict && <VerdictPanel key={`${verdict.verdict}-${platform}`} result={verdict} />}
+
+      <FpsBreakdown
+        key={`breakdown-${game?.appid ?? "manual"}-${platform}`}
+        impact={upgradeImpact ?? null}
+        verdict={verdict}
+        comparison={comparison}
+      />
 
       {comparison && <ComparisonResult items={comparison} />}
 

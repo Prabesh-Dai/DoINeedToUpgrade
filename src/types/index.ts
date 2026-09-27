@@ -99,6 +99,23 @@ export interface FpsEstimate {
   confidence: FpsConfidence;
 }
 
+export interface UpgradeOption {
+  component: "gpu" | "cpu" | "ram" | "both";
+  /** Example part (or RAM size) to upgrade to; null when there's nothing worth suggesting */
+  target: string | null;
+  /** Estimated FPS after the upgrade */
+  fps: number;
+  /** FPS gained over the current estimate */
+  gain: number;
+}
+
+export interface UpgradeImpact {
+  bottleneck: FpsEstimate["bottleneck"];
+  currentFps: number;
+  /** Sorted by gain, biggest first; the "both" option (if any) comes last */
+  options: UpgradeOption[];
+}
+
 export interface CompareSpecsResult {
   items: ComparisonItem[];
   scores: HardwareScores;

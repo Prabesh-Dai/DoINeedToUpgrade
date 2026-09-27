@@ -165,6 +165,7 @@ export const cpuList: string[] = [
   "Intel Core i7-14700",
   "Intel Core i7-14700F",
   "Intel Core i7-14700K",
+  "Intel Core i9-14900K",
   "Intel Core i7-14700KF",
   "Intel Core i9-14900",
   "Intel Core i9-14900F",
@@ -1178,6 +1179,31 @@ export const gpuScores: Record<string, number> = {
   "Apple M5 Pro GPU": 62,
   "Apple M5 Max GPU": 78,
 };
+
+// Current desktop parts that are easy to buy, used as example upgrades in the
+// FPS breakdown. Each must have an entry in the score table above.
+export const upgradeGpus: string[] = [
+  "Intel Arc B580",
+  "NVIDIA GeForce RTX 5060",
+  "NVIDIA GeForce RTX 5060 Ti",
+  "AMD Radeon RX 9070",
+  "NVIDIA GeForce RTX 5070",
+  "NVIDIA GeForce RTX 5070 Ti",
+  "NVIDIA GeForce RTX 5080",
+  "NVIDIA GeForce RTX 5090",
+];
+
+export const upgradeCpus: string[] = [
+  "AMD Ryzen 5 5600",
+  "Intel Core i5-14400",
+  "AMD Ryzen 5 7600",
+  "Intel Core i5-14600K",
+  "Intel Core i7-14700K",
+  "Intel Core i9-14900K",
+  "AMD Ryzen 5 9600X",
+  "AMD Ryzen 7 7800X3D",
+  "AMD Ryzen 7 9800X3D",
+];
 
 // OS version ordering for comparison (higher = newer)
 export const osScores: Record<string, number> = {

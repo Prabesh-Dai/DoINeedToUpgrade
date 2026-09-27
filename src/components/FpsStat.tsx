@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ComparisonItem, FpsEstimate, VerdictResult } from "@/types";
 import { LuEye } from "react-icons/lu";
 import InfoTip from "@/components/InfoTip";
+import { fpsHiddenReason } from "@/lib/fpsEstimate";
 
 interface Props {
   fpsEstimate: FpsEstimate | null | undefined;
@@ -83,10 +84,9 @@ export default function FpsStat({ fpsEstimate, verdict, comparison }: Props) {
     && !!verdict && (verdict.verdict === "pass" || verdict.verdict === "minimum");
 
   // Hide FPS when failing minimum or the OS doesn't match (cross-platform warn)
-  const osMismatch = comparison?.some(
-    (item) => item.label === "Operating System" && item.minStatus === "warn"
-  ) ?? false;
-  const shouldHide = hasEstimate && (verdict?.verdict === "fail" || osMismatch);
+  const hiddenReason = fpsHiddenReason(verdict, comparison);
+  const osMismatch = hiddenReason === "os";
+  const shouldHide = hasEstimate && hiddenReason !== null;
   const visible = hasEstimate && (!shouldHide || showHidden);
 
   const count = useCountUp(visible ? fpsEstimate!.mid : 0);

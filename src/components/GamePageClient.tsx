@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { GameDetails, UserSpecs, GameRequirements } from "@/types";
 import { compareSpecs } from "@/lib/compareSpecs";
 import { computeVerdict } from "@/lib/computeVerdict";
-import { estimateFps } from "@/lib/fpsEstimate";
+import { estimateFps, estimateUpgrades } from "@/lib/fpsEstimate";
 import { useBenchmarks } from "@/lib/useBenchmarks";
 import VerdictPanel from "@/components/VerdictPanel";
 import ComparisonResult from "@/components/ComparisonResult";
 import FpsStat from "@/components/FpsStat";
+import FpsBreakdown from "@/components/FpsBreakdown";
 import { LuArrowRight, LuPencil } from "react-icons/lu";
 import Link from "next/link";
 
@@ -73,6 +74,7 @@ export default function GamePageClient({ game }: Props) {
   const { items, scores } = compareSpecs(specs, minArg, recArg, cpuScores, gpuScores);
   const verdict = computeVerdict(items);
   const fpsEstimate = estimateFps(scores);
+  const upgradeImpact = estimateUpgrades(scores, specs.cpu, cpuScores, gpuScores);
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,6 +84,7 @@ export default function GamePageClient({ game }: Props) {
           <FpsStat fpsEstimate={fpsEstimate} verdict={verdict} comparison={items} />
         </section>
       </div>
+      <FpsBreakdown impact={upgradeImpact} verdict={verdict} comparison={items} />
       <ComparisonResult items={items} />
       <div className="flex justify-center">
         <Link href={`/?game=${game.appid}`} className="btn btn-ghost btn-sm gap-2">
