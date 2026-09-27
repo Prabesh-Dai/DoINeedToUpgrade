@@ -3,7 +3,7 @@
 import { useState } from "react";
 import GameSearch from "@/components/GameSearch";
 import { GameSource } from "@/types";
-import { uniquePopularGames } from "@/lib/popularGames";
+import { uniquePopularGames, headerImage } from "@/lib/popularGames";
 import { LuScanLine, LuCpu, LuGauge, LuMonitorSmartphone, LuPencil, LuCircleAlert } from "react-icons/lu";
 
 interface Props {
@@ -15,10 +15,8 @@ interface Props {
   initialSource?: GameSource;
 }
 
-const featuredIds = [1245620, 1091500, 1086940, 730, 2358720, 1174180];
-const featured = featuredIds
-  .map((id) => uniquePopularGames.find((g) => g.appid === id))
-  .filter((g): g is { appid: number; name: string } => !!g);
+// Home page cards: the top of the curated list in popularGames.ts
+const featured = uniquePopularGames.slice(0, 6);
 
 const features = [
   {
@@ -114,9 +112,11 @@ export default function StepGameSelect({ onSelect, onManualMode, loading, error,
                 <div className="aspect-[460/215] overflow-hidden bg-base-300">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.appid}/header.jpg`}
+                    src={headerImage(g)}
                     alt=""
                     loading="lazy"
+                    // If Steam's art ever moves, fall back to the plain tile instead of a broken image
+                    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   />
                 </div>

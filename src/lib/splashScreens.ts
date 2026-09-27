@@ -31,18 +31,21 @@ const DEVICES: Device[] = [
   { width: 744, height: 1133, dpr: 2, tablet: true }, // mini 6+
 ];
 
-export type SplashScreen = { file: string; width: number; height: number; media: string };
+export type SplashScheme = "light" | "dark";
+export type SplashScreen = { file: string; width: number; height: number; scheme: SplashScheme; media: string };
 
-// Phones get portrait only; iPads are often used in landscape, so they get both
+// Phones get portrait only; iPads are often used in landscape, so they get both.
+// Every size comes in light and dark, picked by the device's appearance setting.
 export const SPLASH_SCREENS: SplashScreen[] = DEVICES.flatMap(({ width, height, dpr, tablet }) => {
   const orientations = tablet ? (["portrait", "landscape"] as const) : (["portrait"] as const);
-  return orientations.map((orientation) => {
+  return orientations.flatMap((orientation) => {
     const [pw, ph] = orientation === "portrait" ? [width * dpr, height * dpr] : [height * dpr, width * dpr];
-    return {
-      file: `${pw}x${ph}.png`,
+    return (["light", "dark"] as const).map((scheme) => ({
+      file: `${pw}x${ph}-${scheme}.png`,
       width: pw,
       height: ph,
-      media: `(device-width: ${width}px) and (device-height: ${height}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: ${orientation})`,
-    };
+      scheme,
+      media: `(device-width: ${width}px) and (device-height: ${height}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: ${orientation}) and (prefers-color-scheme: ${scheme})`,
+    }));
   });
 });

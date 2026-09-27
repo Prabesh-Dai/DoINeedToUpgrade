@@ -47,10 +47,19 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.ico",
+    // Browsers that support SVG favicons pick icon.svg (adapts to light/dark UI); others use the .ico
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
+  // Next only emits `mobile-web-app-capable`; iOS still needs the Apple tag before it
+  // will show apple-touch-startup-image launch screens
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
   appleWebApp: {
     capable: true,
     title: "Upgrade?",
@@ -66,7 +75,15 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F4F4F5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0E0E10" },
+  ],
 };
+
+// Runs before first paint: saved choice wins, otherwise follow the system.
+// Avoids a flash of the wrong theme (and matches the light/dark splash screens).
+const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
 
 export default function RootLayout({
   children,
@@ -74,8 +91,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="dark" data-reduce-motion="false" className="h-full overflow-hidden">
+    <html lang="en" data-theme="dark" data-reduce-motion="false" className="h-full overflow-hidden" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <StructuredData />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans h-full w-full overflow-hidden flex flex-col bg-base-200 text-base-content`}>

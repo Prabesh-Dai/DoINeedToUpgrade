@@ -154,7 +154,15 @@ export function LogoMark({ size }: { size: number }) {
 }
 
 // Two-tone wordmark, same as the site header
-export function Wordmark({ fontSize = 22 }: { fontSize?: number }) {
+export function Wordmark({
+  fontSize = 22,
+  muted = OG.muted,
+  text = OG.text,
+}: {
+  fontSize?: number;
+  muted?: string;
+  text?: string;
+}) {
   return (
     <div
       style={{
@@ -164,8 +172,8 @@ export function Wordmark({ fontSize = 22 }: { fontSize?: number }) {
         letterSpacing: "-0.015em",
       }}
     >
-      <span style={{ color: OG.muted, fontWeight: 600 }}>Do I Need To&nbsp;</span>
-      <span style={{ color: OG.text }}>Upgrade?</span>
+      <span style={{ color: muted, fontWeight: 600 }}>Do I Need To&nbsp;</span>
+      <span style={{ color: text }}>Upgrade?</span>
     </div>
   );
 }

@@ -10,10 +10,18 @@ export default function SettingsDropdown() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // No saved choice: follow the system theme (and keep following it if it changes)
     const savedTheme = localStorage.getItem("theme");
-    const isDark = savedTheme !== "light";
-    setDark(isDark);
-    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    const systemLight = window.matchMedia("(prefers-color-scheme: light)");
+    const applyTheme = (isDark: boolean) => {
+      setDark(isDark);
+      document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    };
+    applyTheme(savedTheme ? savedTheme !== "light" : !systemLight.matches);
+    const onSystemChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem("theme")) applyTheme(!e.matches);
+    };
+    systemLight.addEventListener("change", onSystemChange);
 
     const savedMotion = localStorage.getItem("reduceMotion");
     const isReduced = savedMotion !== null
@@ -21,6 +29,8 @@ export default function SettingsDropdown() {
       : window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setReduced(isReduced);
     document.documentElement.setAttribute("data-reduce-motion", String(isReduced));
+
+    return () => systemLight.removeEventListener("change", onSystemChange);
   }, []);
 
   useEffect(() => {
