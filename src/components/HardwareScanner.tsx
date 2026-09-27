@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { UserSpecs } from "@/types";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
 import { gameQuery, ScannerGame } from "@/lib/scannerGameParam";
-import { LuCircleCheck, LuTriangleAlert, LuDownload, LuClipboardPaste, LuCopy, LuCheck, LuScanLine, LuTerminal } from "react-icons/lu";
+import { LuCircleCheck, LuTriangleAlert, LuDownload, LuClipboardPaste, LuCopy, LuCheck, LuScanLine, LuTerminal, LuChevronDown } from "react-icons/lu";
+import { track } from "@vercel/analytics";
 
 interface Props {
   onImport: (specs: UserSpecs) => void;
@@ -24,27 +25,32 @@ function detectClientPlatform(): ClientPlatform {
 
 type StepGroup = {
   primary: React.ReactNode;
-  alternatives?: {
-    text: React.ReactNode;
-    terminalCommand?: string;
-  }[];
+  alternatives?: React.ReactNode[];
 };
 
 type PlatformInfo = {
   label: string;
   appFiles: { label: string; file: string }[];
   // {URL} is replaced with the script URL (quoted, since it may contain "?")
-  terminalCommand: { label: string; path: string; command: string };
+  terminalCommand: { label: string; path: string; command: string; howToOpen: React.ReactNode };
   stepGroups: StepGroup[];
+  /** The unsigned app is a lot more hassle than the command here, so it sits behind a "Prefer an app?" toggle */
+  tuckApp?: boolean;
 };
 
 const platformInfo: Record<ClientPlatform, PlatformInfo> = {
   windows: {
     label: "Windows",
     appFiles: [{ label: "Windows", file: "/downloads/DoINeedToUpgrade.exe" }],
-    terminalCommand: { label: "PowerShell", path: "/api/scan.ps1", command: 'irm "{URL}" | iex' },
+    terminalCommand: {
+      label: "PowerShell",
+      path: "/api/scan.ps1",
+      command: 'irm "{URL}" | iex',
+      howToOpen: <>Right-click the Start button and pick <strong>Terminal</strong> (or <strong>PowerShell</strong>). Paste the command and press Enter.</>,
+    },
     stepGroups: [
-      { primary: "Double-click the downloaded file to run." },
+      { primary: "Double-click the downloaded file. If your browser flagged it, choose Keep in your downloads list first." },
+      { primary: <>If Windows says it protected your PC, click <strong>More info</strong>, then <strong>Run anyway</strong>.</> },
       { primary: "The scanner will detect your specs and open this page with them imported automatically." },
     ],
   },
@@ -54,18 +60,19 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
       { label: "Apple Silicon (M1 and newer)", file: "/downloads/DoINeedToUpgrade-Mac-AppleSilicon.dmg" },
       { label: "Intel Mac", file: "/downloads/DoINeedToUpgrade-Mac-Intel.dmg" },
     ],
-    terminalCommand: { label: "Terminal", path: "/api/scan", command: 'curl -s "{URL}" | bash' },
+    terminalCommand: {
+      label: "Terminal",
+      path: "/api/scan",
+      command: 'curl -s "{URL}" | bash',
+      howToOpen: <>Press <strong>Cmd+Space</strong>, type <strong>Terminal</strong> and press Enter. Paste the command and press Enter.</>,
+    },
     stepGroups: [
       { primary: "Open the .dmg and drag the app to Applications." },
-      {
-        primary: <>On first launch, go to <strong>System Settings → Privacy &amp; Security</strong> and click <strong>&quot;Open Anyway&quot;</strong>.</>,
-        alternatives: [{
-          text: "Remove the quarantine and open via Terminal:",
-          terminalCommand: "xattr -d com.apple.quarantine /Applications/DoINeedToUpgrade*.app && open /Applications/DoINeedToUpgrade*.app",
-        }],
-      },
+      { primary: "Open the app. macOS will block it the first time." },
+      { primary: <>Go to <strong>System Settings → Privacy &amp; Security</strong>, scroll down, click <strong>Open Anyway</strong> and enter your password.</> },
       { primary: "The scanner will detect your specs and open this page with them imported automatically." },
     ],
+    tuckApp: true,
   },
   linux: {
     label: "Linux",
@@ -73,13 +80,16 @@ const platformInfo: Record<ClientPlatform, PlatformInfo> = {
       { label: ".deb (Ubuntu/Debian)", file: "/downloads/DoINeedToUpgrade-Linux.deb" },
       { label: ".AppImage (Other)", file: "/downloads/DoINeedToUpgrade-Linux.AppImage" },
     ],
-    terminalCommand: { label: "Terminal", path: "/api/scan", command: 'curl -s "{URL}" | bash' },
+    terminalCommand: {
+      label: "Terminal",
+      path: "/api/scan",
+      command: 'curl -s "{URL}" | bash',
+      howToOpen: <>Open a terminal (<strong>Ctrl+Alt+T</strong> on most distros). Paste the command with <strong>Ctrl+Shift+V</strong> and press Enter.</>,
+    },
     stepGroups: [
       {
         primary: "For .deb: right-click → Open With → Software Install, then click Install.",
-        alternatives: [{
-          text: "For AppImage: right-click → Properties → mark as executable, then double-click.",
-        }],
+        alternatives: ["For AppImage: right-click → Properties → mark as executable, then double-click."],
       },
       { primary: "The scanner will detect your specs and open this page with them imported automatically." },
     ],
@@ -107,6 +117,7 @@ export default function HardwareScanner({ onImport, game }: Props) {
     if (result) {
       setStatus("success");
       onImport(result);
+      track("scanner_import", { via: "code" });
       closeCollapse();
       setToast(true);
       setTimeout(() => setToast(false), 3000);
@@ -128,6 +139,7 @@ export default function HardwareScanner({ onImport, game }: Props) {
       if (result) {
         setStatus("success");
         onImport(result);
+        track("scanner_import", { via: "code" });
         closeCollapse();
         setToast(true);
         setTimeout(() => setToast(false), 3000);
@@ -143,6 +155,81 @@ export default function HardwareScanner({ onImport, game }: Props) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const scriptUrl = `${origin}${info.terminalCommand.path}${game ? `?${gameQuery(game)}` : ""}`;
   const command = info.terminalCommand.command.replace("{URL}", scriptUrl);
+
+  const terminalCard = (
+    <div className="flex min-w-0 flex-col gap-3 rounded border border-base-content/[0.08] bg-base-content/[0.02] p-4">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <LuTerminal className="h-4 w-4 text-base-content/50" />
+        Run in {info.terminalCommand.label}
+        <span className="chip ml-auto bg-primary text-primary-content">Fastest</span>
+      </div>
+      <div className="flex w-full max-w-full items-stretch overflow-hidden rounded-sm bg-base-300/70">
+        <div className="min-w-0 flex-1 overflow-x-auto py-2.5 pl-3 pr-3 scrollbar-subtle">
+          <code className="whitespace-nowrap font-mono text-xs">{command}</code>
+        </div>
+        <button
+          className="btn btn-sm btn-square btn-ghost h-auto shrink-0 rounded-none border-l border-base-content/10"
+          onClick={async () => {
+            await navigator.clipboard.writeText(command);
+            track("scanner_copy_command", { platform: clientPlatform });
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          aria-label="Copy command"
+        >
+          {copied ? <LuCheck className="h-4 w-4 text-success" /> : <LuCopy className="h-4 w-4" />}
+        </button>
+      </div>
+      <p className="text-xs text-base-content/75 leading-relaxed">{info.terminalCommand.howToOpen}</p>
+      <p className="text-xs text-base-content/55 leading-relaxed">
+        Detects your hardware and reopens this page with your specs filled in.{" "}
+        <a
+          href={scriptUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="link underline-offset-2 hover:text-base-content"
+          onClick={() => track("scanner_view_script", { platform: clientPlatform })}
+        >
+          See what it runs
+        </a>
+      </p>
+    </div>
+  );
+
+  const appBody = (
+    <>
+      <div className="flex flex-col gap-2">
+        {info.appFiles.map((app) => (
+          <a
+            key={app.file}
+            href={app.file}
+            className="btn btn-sm btn-outline h-auto min-h-9 w-full justify-start py-2 text-left leading-snug"
+            onClick={() => track("scanner_download", { platform: clientPlatform, file: app.label, from: "panel" })}
+          >
+            <LuDownload className="h-4 w-4 shrink-0" />
+            {info.appFiles.length > 1 ? app.label : "Download scanner"}
+          </a>
+        ))}
+      </div>
+
+      <ol className="flex flex-col gap-2.5">
+        {info.stepGroups.map((group, groupIdx) => (
+          <li key={groupIdx} className="flex items-start gap-2.5">
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-base-content/[0.08] text-[11px] font-semibold text-base-content/70">{groupIdx + 1}</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-2 text-xs leading-relaxed text-base-content/75">
+              <span className="break-words">{group.primary}</span>
+              {group.alternatives?.map((alt, altIdx) => (
+                <div key={altIdx} className="flex flex-col gap-1.5 border-l-2 border-base-content/10 pl-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-base-content/40">Alternatively</span>
+                  <span className="break-words">{alt}</span>
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
 
   return (
     <>
@@ -160,90 +247,33 @@ export default function HardwareScanner({ onImport, game }: Props) {
           </div>
         </div>
         <div className="collapse-content !px-3.5 sm:!px-4 flex flex-col gap-4">
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 pt-1">
-            {/* Terminal command */}
-            <div className="flex min-w-0 flex-col gap-3 rounded border border-base-content/[0.08] bg-base-content/[0.02] p-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <LuTerminal className="h-4 w-4 text-base-content/50" />
-                Run in {info.terminalCommand.label}
-                <span className="chip ml-auto bg-primary text-primary-content">Fastest</span>
-              </div>
-              <div className="flex w-full max-w-full items-stretch overflow-hidden rounded-sm bg-base-300/70">
-                <div className="min-w-0 flex-1 overflow-x-auto py-2.5 pl-3 pr-3 scrollbar-subtle">
-                  <code className="whitespace-nowrap font-mono text-xs">{command}</code>
+          {info.tuckApp ? (
+            <div className="flex flex-col gap-3 pt-1">
+              {terminalCard}
+              <details className="group rounded border border-base-content/[0.08] bg-base-content/[0.02]">
+                <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                  <LuDownload className="h-4 w-4 shrink-0 text-base-content/50" />
+                  <span className="min-w-0">
+                    Prefer an app?
+                    <span className="block text-xs font-normal text-base-content/55">A few more clicks, since macOS makes you allow it first.</span>
+                  </span>
+                  <LuChevronDown className="ml-auto h-4 w-4 shrink-0 text-base-content/50 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="flex flex-col gap-3 px-4 pb-4">{appBody}</div>
+              </details>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 pt-1">
+              {terminalCard}
+              <div className="flex min-w-0 flex-col gap-3 rounded border border-base-content/[0.08] bg-base-content/[0.02] p-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <LuDownload className="h-4 w-4 text-base-content/50" />
+                  Or download the app for {info.label}
                 </div>
-                <button
-                  className="btn btn-sm btn-square btn-ghost h-auto shrink-0 rounded-none border-l border-base-content/10"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(command);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  aria-label="Copy command"
-                >
-                  {copied ? <LuCheck className="h-4 w-4 text-success" /> : <LuCopy className="h-4 w-4" />}
-                </button>
+                {appBody}
               </div>
-              <p className="text-xs text-base-content/55 leading-relaxed">
-                Detects your hardware and reopens this page with your specs filled in.
-              </p>
             </div>
-
-            {/* App download */}
-            <div className="flex min-w-0 flex-col gap-3 rounded border border-base-content/[0.08] bg-base-content/[0.02] p-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <LuDownload className="h-4 w-4 text-base-content/50" />
-                Or download the app for {info.label}
-              </div>
-              <div className="flex flex-col gap-2">
-                {info.appFiles.map((app) => (
-                  <a
-                    key={app.file}
-                    href={app.file}
-                    className="btn btn-sm btn-outline h-auto min-h-9 w-full justify-start py-2 text-left leading-snug"
-                  >
-                    <LuDownload className="h-4 w-4 shrink-0" />
-                    {info.appFiles.length > 1 ? app.label : "Download scanner"}
-                  </a>
-                ))}
-              </div>
-
-              <ol className="flex flex-col gap-2.5">
-                {info.stepGroups.map((group, groupIdx) => (
-                  <li key={groupIdx} className="flex items-start gap-2.5">
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-base-content/[0.08] text-[11px] font-semibold text-base-content/70">{groupIdx + 1}</span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-2 text-xs leading-relaxed text-base-content/75">
-                      <span className="break-words">{group.primary}</span>
-                      {group.alternatives?.map((alt, altIdx) => (
-                        <div key={altIdx} className="flex flex-col gap-1.5 border-l-2 border-base-content/10 pl-3">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-base-content/40">Alternatively</span>
-                          <span className="break-words">{alt.text}</span>
-                          {alt.terminalCommand && (
-                            <div className="flex w-full max-w-full items-stretch overflow-hidden rounded-sm bg-base-300/70">
-                              <div className="min-w-0 flex-1 overflow-x-auto py-2 pl-3 pr-3 scrollbar-subtle">
-                                <code className="whitespace-nowrap font-mono text-[11px]">{alt.terminalCommand}</code>
-                              </div>
-                              <button
-                                className="btn btn-sm btn-square btn-ghost h-auto shrink-0 rounded-none border-l border-base-content/10"
-                                onClick={async () => {
-                                  await navigator.clipboard.writeText(alt.terminalCommand!);
-                                  setCopied(true);
-                                  setTimeout(() => setCopied(false), 2000);
-                                }}
-                                aria-label="Copy command"
-                              >
-                                {copied ? <LuCheck className="h-3.5 w-3.5 text-success" /> : <LuCopy className="h-3.5 w-3.5" />}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
+          )}
 
           {/* Paste fallback */}
           <div className="flex flex-col gap-2">

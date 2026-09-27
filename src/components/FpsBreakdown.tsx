@@ -29,35 +29,17 @@ const comparisonLabels: Partial<Record<UpgradeOption["component"], string>> = {
   ram: "Memory (RAM)",
 };
 
-const headlines: Record<UpgradeImpact["bottleneck"], { title: string; body: string }> = {
-  gpu: {
-    title: "Your GPU is holding you back",
-    body: "Your CPU could keep up with a much faster GPU, so that's the upgrade to get.",
-  },
-  cpu: {
-    title: "Your CPU is holding you back",
-    body: "Your GPU could push more frames if your CPU kept up.",
-  },
-  balanced: {
-    title: "Your CPU and GPU are a good match",
-    body: "Neither one is slowing the other down. For a big jump, upgrade both.",
-  },
-  ram: {
-    title: "You're short on RAM",
-    body: "The game wants more memory than you have, which causes stutters.",
-  },
+const headlines: Record<UpgradeImpact["bottleneck"], string> = {
+  gpu: "Your CPU could keep up with a much faster GPU, so that's the upgrade to get.",
+  cpu: "Your GPU could push more frames if your CPU kept up.",
+  balanced: "Your CPU and GPU are a good match. For a big jump, upgrade both.",
+  ram: "The game wants more memory than you have, which causes stutters.",
 };
 
 // When the part that sets the limit is already about as fast as it gets
-const maxedHeadlines: Partial<Record<UpgradeImpact["bottleneck"], { title: string; body: string }>> = {
-  gpu: {
-    title: "Your GPU sets the limit here",
-    body: "It's already one of the fastest. This game just leans hard on the GPU.",
-  },
-  cpu: {
-    title: "Your CPU sets the limit here",
-    body: "It's already one of the fastest. This game just leans hard on the CPU.",
-  },
+const maxedHeadlines: Partial<Record<UpgradeImpact["bottleneck"], string>> = {
+  gpu: "Your GPU is already one of the fastest. This game just leans hard on it.",
+  cpu: "Your CPU is already one of the fastest. This game just leans hard on it.",
 };
 
 // Laptop and Mac parts usually can't be swapped out
@@ -91,10 +73,7 @@ export default function FpsBreakdown({ impact, verdict, comparison }: Props) {
   const plenty = impact.currentFps >= PLENTY_FPS;
   const limitMaxed = impact.options.some((o) => o.component === impact.bottleneck && !o.target);
   const headline = plenty
-    ? {
-        title: "Your PC handles this easily",
-        body: `You're already past ${PLENTY_FPS} fps, so an upgrade won't be noticeable.`,
-      }
+    ? `You're already past ${PLENTY_FPS} fps, so an upgrade won't be noticeable.`
     : (limitMaxed && maxedHeadlines[impact.bottleneck]) || headlines[impact.bottleneck];
   const fixed = isFixedHardware(userValue("gpu") ?? "", userValue("cpu") ?? "");
 
@@ -108,8 +87,7 @@ export default function FpsBreakdown({ impact, verdict, comparison }: Props) {
           </InfoTip>
         </span>
       </div>
-      <h2 className="mt-1 text-xl sm:text-2xl font-bold leading-tight tracking-tight">{headline.title}</h2>
-      <p className="mt-1.5 text-sm text-base-content/60">{headline.body}</p>
+      <h2 className="mt-1 text-lg sm:text-xl font-bold leading-snug tracking-tight">{headline}</h2>
     </>
   );
 

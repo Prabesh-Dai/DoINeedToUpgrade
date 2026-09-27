@@ -11,6 +11,7 @@ import { useBenchmarks } from "@/lib/useBenchmarks";
 import { detectClientSpecs } from "@/lib/detectClientSpecs";
 import { fuzzyMatchHardware } from "@/lib/fuzzyMatch";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
+import { track } from "@vercel/analytics";
 import { getPendingGame, clearPendingGame, savePendingGame } from "@/lib/pendingGameCheck";
 import { parseGameParams, ScannerGame } from "@/lib/scannerGameParam";
 import WizardStepper from "@/components/WizardStepper";
@@ -137,61 +138,15 @@ function Home() {
     // Read before the URL gets cleaned up below
     const returnGame = parseGameParams(searchParams);
 
-    // Priority 0: Check URL params for import token (from shell script)
-    const importToken = searchParams.get("import");
-    if (importToken) {
-      // Clean up URL immediately
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("import");
-        window.history.replaceState({}, "", url.pathname);
-      }
-
-      (async () => {
-        try {
-          const res = await fetch(`/api/import?token=${encodeURIComponent(importToken)}`);
-          if (!res.ok) throw new Error("Token expired or invalid");
-          const data = await res.json();
-
-          const imported: UserSpecs = {
-            os: data.os ?? "",
-            cpu: data.cpu ?? "",
-            cpuCores: typeof data.cpuCores === "number" ? data.cpuCores : null,
-            cpuSpeedGHz: typeof data.cpuSpeedGHz === "number" ? data.cpuSpeedGHz : null,
-            gpu: typeof data.gpu === "string" ? data.gpu : "",
-            ramGB: typeof data.ramGB === "number" ? data.ramGB : null,
-            storageGB: typeof data.storageGB === "number" ? data.storageGB : null,
-            detectionSource: "script",
-            ramApproximate: false,
-          };
-
-          setSpecs(imported);
-          const now = new Date().toISOString();
-          setSavedAt(now);
-          localStorage.setItem("savedSpecs", JSON.stringify({ specs: imported, savedAt: now }));
-          const detected = detectPlatformFromOS(imported.os || "");
-          setPlatform(detected);
-          setUserPlatform(detected);
-          setUnmatchedFields([]);
-          setDetecting(false);
-          setShowUrlImportToast(true);
-
-          await resumeAfterImport(imported, detected, returnGame);
-        } catch {
-          // Token expired/invalid — fall through to normal detection
-          setDetecting(false);
-        }
-      })();
-      return;
-    }
-
-    // Priority 1: Check URL params for specs (from hardware scanner script)
+    // Priority 1: Check URL params for specs (from the scanner app or terminal script)
     const urlSpecs = searchParams.get("specs");
     if (urlSpecs) {
-      // Add DINAU: prefix since URL only contains the base64 part
-      const decoded = decodeSpecsPayload(`DINAU:${urlSpecs}`);
+      // Add DINAU: prefix since URL only contains the base64 part.
+      // The apps don't percent-encode it, so any "+" arrives as a space; base64 never has spaces.
+      const decoded = decodeSpecsPayload(`DINAU:${urlSpecs.replace(/ /g, "+")}`);
       if (decoded) {
         setSpecs(decoded);
+        track("scanner_import", { via: searchParams.get("via") === "script" ? "script" : "app" });
         const now = new Date().toISOString();
         setSavedAt(now);
         localStorage.setItem("savedSpecs", JSON.stringify({ specs: decoded, savedAt: now }));
@@ -270,7 +225,7 @@ function Home() {
   // Handle ?game= parameter from game page CTA
   useEffect(() => {
     // Scanner return URLs also carry ?game=; the import flow above handles those
-    if (searchParams.get("import") || searchParams.get("specs")) return;
+    if (searchParams.get("specs")) return;
     const gameParam = searchParams.get("game");
     if (gameParam && /^\d+$/.test(gameParam)) {
       // Clean up URL

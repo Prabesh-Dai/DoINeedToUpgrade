@@ -10,6 +10,7 @@ const macosVersionMap: Record<string, string> = {
   "13": "macOS Ventura",
   "14": "macOS Sonoma",
   "15": "macOS Sequoia",
+  "26": "macOS Tahoe",
 };
 
 function macosVersionToCodename(version: string): string | null {
@@ -39,7 +40,6 @@ const safariVersionToMacOS: Record<number, string> = {
   16: "13",   // Safari 16 → macOS Ventura
   17: "14",   // Safari 17 → macOS Sonoma
   18: "15",   // Safari 18 → macOS Sequoia
-  19: "16",   // Safari 19 → future
 };
 
 function inferMacOSFromSafariVersion(ua: string): string | null {
@@ -47,9 +47,10 @@ function inferMacOSFromSafariVersion(ua: string): string | null {
   const match = ua.match(/Version\/(\d+)\.\d+.*Safari\//);
   if (!match) return null;
   const safariMajor = parseInt(match[1], 10);
-  const macVersion = safariVersionToMacOS[safariMajor];
+  // From 26 on, Safari and macOS share the same version number (Safari 26 → macOS 26 Tahoe)
+  const macVersion = safariMajor >= 26 ? String(safariMajor) : safariVersionToMacOS[safariMajor];
   if (!macVersion) return null;
-  return macosVersionToCodename(macVersion);
+  return macosVersionToCodename(macVersion) ?? `macOS ${macVersion}`;
 }
 
 async function detectOS(): Promise<string> {
@@ -186,6 +187,7 @@ function getMacOSMajorVersion(os: string): number | null {
     "macOS Ventura": 13,
     "macOS Sonoma": 14,
     "macOS Sequoia": 15,
+    "macOS Tahoe": 26,
   };
   if (codenameMap[os]) return codenameMap[os];
   const match = os.match(/macOS\s+(\d+)/);

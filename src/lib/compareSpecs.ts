@@ -36,7 +36,7 @@ function extractPlatform(text: string): "windows" | "macos" | "linux" | null {
   const lower = text.toLowerCase();
   if (lower.includes("windows") || lower.includes("win")) return "windows";
   if (lower.includes("macos") || lower.includes("mac os") || lower.includes("os x") || lower.includes("osx") ||
-      /\b(big sur|monterey|ventura|sonoma|sequoia|catalina|mojave|high sierra|sierra|el capitan|yosemite|mavericks)\b/.test(lower)) return "macos";
+      /\b(big sur|monterey|ventura|sonoma|sequoia|tahoe|catalina|mojave|high sierra|sierra|el capitan|yosemite|mavericks)\b/.test(lower)) return "macos";
   if (lower.includes("linux") || lower.includes("ubuntu") || lower.includes("steamos")) return "linux";
   return null;
 }
@@ -251,13 +251,21 @@ function vendorAwareMatch(
 }
 
 /**
- * Detect CPU platform from text (Intel vs AMD).
+ * Score of the weakest listed alternative, since any of them meets the
+ * requirement. Falls back to matching the full requirement text.
  */
-function extractCPUPlatform(text: string): "intel" | "amd" | null {
-  const lower = text.toLowerCase();
-  if (lower.includes("intel") || /\b(core\s+)?i[3579]\b/.test(lower)) return "intel";
-  if (lower.includes("amd") || /\b(ryzen|athlon|fx[-\s]|phenom)\b/.test(lower)) return "amd";
-  return null;
+function weakestAlternativeScore(
+  reqText: string,
+  candidates: string[],
+  scores: Record<string, number>,
+): number | null {
+  const altScores = splitAlternatives(reqText)
+    .map((alt) => fuzzyMatchHardware(alt, candidates))
+    .filter((match): match is string => match !== null && scores[match] != null)
+    .map((match) => scores[match]);
+  if (altScores.length > 0) return Math.min(...altScores);
+  const match = fuzzyMatchHardware(reqText, candidates);
+  return match ? (scores[match] ?? null) : null;
 }
 
 /**
@@ -266,8 +274,8 @@ function extractCPUPlatform(text: string): "intel" | "amd" | null {
  * 2. Try family-average matching for broad requirements like "Intel i5"
  * 3. Fall back to spec-based comparison when model matching fails
  *
- * When the requirement lists platform-specific alternatives (e.g.
- * "i7-3770K or FX-8350"), only compare against the user's platform.
+ * Meeting any listed alternative is enough, whatever the brand. Publishers
+ * don't always pair equal chips (e.g. "i7-12700 or Ryzen 7 7800X3D").
  */
 function compareCPU(
   user: UserSpecs,
@@ -278,21 +286,7 @@ function compareCPU(
   if (!reqText) return "pass";
 
   // Try each alternative in the requirement text
-  const allAlternatives = splitAlternatives(reqText);
-
-  // Prefer same-platform alternatives when available (e.g. Intel user
-  // should compare against the Intel requirement, not the AMD equivalent)
-  const userPlatform = user.cpu ? extractCPUPlatform(user.cpu) : null;
-  let alternatives = allAlternatives;
-  if (userPlatform) {
-    const samePlatform = allAlternatives.filter(
-      (alt) => {
-        const altPlatform = extractCPUPlatform(alt);
-        return altPlatform === userPlatform || altPlatform === null;
-      }
-    );
-    if (samePlatform.length > 0) alternatives = samePlatform;
-  }
+  const alternatives = splitAlternatives(reqText);
 
   let bestStatus: ComparisonStatus = "info";
 
@@ -356,12 +350,9 @@ function compareCPU(
     }
   }
 
-  // If we couldn't determine anything from alternatives, try hardware comparison using the
-  // already platform-filtered alternatives (avoids cross-brand false passes, e.g. comparing
-  // an Intel CPU against an AMD FX alternative that has a lower score).
+  // If we couldn't determine anything from alternatives, fall back to plain hardware comparison
   if (bestStatus === "info" && user.cpu) {
-    const filteredReqText = alternatives.join(" or ");
-    return compareHardware(user.cpu, filteredReqText || reqText, candidates, scores, estimateCPUScore);
+    return compareHardware(user.cpu, reqText, candidates, scores, estimateCPUScore);
   }
 
   return bestStatus;
@@ -795,23 +786,22 @@ export function compareSpecs(
     recStatus: compareNumeric(user.storageGB, rec.storage),
   });
 
-  // Extract GPU/CPU scores for FPS estimation, preferring same-vendor alternatives.
+  // Extract GPU/CPU scores for FPS estimation. GPUs prefer same-vendor alternatives,
+  // CPUs use the weakest one to match the pass/fail check above.
   // Use resolveScore for fallback interpolation when fuzzy match fails.
   const userGpuScore = cleanedGPU ? resolveScore(cleanedGPU, Object.keys(gpuScores), gpuScores, estimateGPUScore) : null;
   const userCpuScore = user.cpu   ? resolveScore(user.cpu,   Object.keys(cpuScores), cpuScores, estimateCPUScore) : null;
 
   const recGpuMatch  = rec.gpu  ? vendorAwareMatch(cleanedGPU,    rec.gpu,  Object.keys(gpuScores), extractGPUVendor) : null;
   const minGpuMatch  = min.gpu  ? vendorAwareMatch(cleanedGPU,    min.gpu,  Object.keys(gpuScores), extractGPUVendor) : null;
-  const recCpuMatch  = rec.cpu  ? vendorAwareMatch(user.cpu ?? "", rec.cpu, Object.keys(cpuScores), extractCPUPlatform) : null;
-  const minCpuMatch  = min.cpu  ? vendorAwareMatch(user.cpu ?? "", min.cpu, Object.keys(cpuScores), extractCPUPlatform) : null;
 
   const scores: HardwareScores = {
     userGpuScore,
     recGpuScore:  recGpuMatch  ? (gpuScores[recGpuMatch]  ?? null) : null,
     minGpuScore:  minGpuMatch  ? (gpuScores[minGpuMatch]  ?? null) : null,
     userCpuScore,
-    recCpuScore:  recCpuMatch  ? (cpuScores[recCpuMatch]  ?? null) : null,
-    minCpuScore:  minCpuMatch  ? (cpuScores[minCpuMatch]  ?? null) : null,
+    recCpuScore:  rec.cpu ? weakestAlternativeScore(rec.cpu, Object.keys(cpuScores), cpuScores) : null,
+    minCpuScore:  min.cpu ? weakestAlternativeScore(min.cpu, Object.keys(cpuScores), cpuScores) : null,
     userRamGB:    user.ramGB,
     minRamGB:     parseGB(min.ram),
     recRamGB:     parseGB(rec.ram),

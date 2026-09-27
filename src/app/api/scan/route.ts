@@ -202,9 +202,11 @@ if [[ \${#errors[@]} -gt 0 ]]; then
   done
 fi
 
-# --- POST to import API ---
-echo
-echo "Sending specs..."
+# --- Build the link ---
+# Specs ride along in the page URL as base64 JSON, same as the app. Nothing gets stored on a server.
+
+# bc prints values under 1 without the leading zero (".8"), which isn't valid JSON
+[[ "\$cpu_speed" == .* ]] && cpu_speed="0\$cpu_speed"
 
 json=\$(cat <<INNEREOF
 {
@@ -219,20 +221,16 @@ json=\$(cat <<INNEREOF
 INNEREOF
 )
 
-response=\$(curl -s -X POST "${baseUrl}/api/import" \\
-  -H "Content-Type: application/json" \\
-  -d "\$json")
-
-token=\$(echo "\$response" | grep -oE '"token":"[^"]+"' | cut -d'"' -f4)
-
-if [[ -z "\$token" ]]; then
-  echo "Failed to upload specs. You can use the website manually."
-  echo "Error: \$response"
-  exit 1
-fi
+b64=\$(printf '%s' "\$json" | base64 | tr -d '\\n')
+code="DINAU:\$b64"
+# Percent-encode the base64 characters that mean something in a query string
+b64=\${b64//+/%2B}
+b64=\${b64//\\//%2F}
+b64=\${b64//=/%3D}
 
 # --- Open browser ---
-url="${baseUrl}/?import=\$token${returnSuffix}"
+url="${baseUrl}/?specs=\$b64&via=script${returnSuffix}"
+echo
 echo "Opening browser..."
 
 if [[ "\$(uname)" == "Darwin" ]]; then
@@ -248,5 +246,7 @@ fi
 
 echo
 echo "Done! Your specs should appear in the browser."
+echo "If they don't, paste this code into the scanner box on the site:"
+echo "\$code"
 `;
 }

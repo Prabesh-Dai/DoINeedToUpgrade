@@ -1224,6 +1224,7 @@ export const osScores: Record<string, number> = {
   "macOS Ventura": 34,
   "macOS Sonoma": 36,
   "macOS Sequoia": 40,
+  "macOS Tahoe": 44,
   // macOS numeric versions (detected from UA)
   "macOS 10.13": 24,
   "macOS 10.14": 26,
@@ -1233,6 +1234,8 @@ export const osScores: Record<string, number> = {
   "macOS 13": 34,
   "macOS 14": 36,
   "macOS 15": 40,
+  "macOS 26": 44,
+  "macOS 27": 48,
   // OS X versions (common in Steam requirements)
   "OS X 10.9": 16,
   "OS X 10.10": 18,
@@ -1269,6 +1272,7 @@ export const osList: string[] = [
   "macOS Ventura",
   "macOS Sonoma",
   "macOS Sequoia",
+  "macOS Tahoe",
   // macOS numeric versions
   "macOS 10.13",
   "macOS 10.14",
@@ -1278,6 +1282,8 @@ export const osList: string[] = [
   "macOS 13",
   "macOS 14",
   "macOS 15",
+  "macOS 26",
+  "macOS 27",
   // OS X versions
   "OS X 10.9",
   "OS X 10.10",

@@ -10,7 +10,9 @@ export function decodeSpecsPayload(input: string): UserSpecs | null {
 
   let json: string;
   try {
-    json = atob(b64);
+    // atob gives one char per byte; decode those bytes as UTF-8 so non-English OS names survive
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    json = new TextDecoder().decode(bytes);
   } catch {
     return null;
   }

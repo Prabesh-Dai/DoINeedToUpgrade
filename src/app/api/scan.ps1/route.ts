@@ -99,11 +99,9 @@ if (\$errors.Count -gt 0) {
     }
 }
 
-# --- POST to import API ---
-Write-Host ""
-Write-Host "Sending specs..."
-
-\$body = @{
+# --- Build the link ---
+# Specs ride along in the page URL as base64 JSON, same as the app. Nothing gets stored on a server.
+\$json = @{
     os = \$os
     cpu = \$cpu
     cpuCores = \$cpuCores
@@ -111,28 +109,19 @@ Write-Host "Sending specs..."
     gpu = \$gpu
     ramGB = \$ramGB
     storageGB = \$storageGB
-} | ConvertTo-Json
+} | ConvertTo-Json -Compress
 
-try {
-    \$response = Invoke-RestMethod -Uri "${baseUrl}/api/import" -Method Post -ContentType "application/json" -Body \$body
-    \$token = \$response.token
-} catch {
-    Write-Host "Failed to upload specs. You can use the website manually."
-    Write-Host "Error: \$_"
-    exit 1
-}
-
-if (-not \$token) {
-    Write-Host "Failed to get import token."
-    exit 1
-}
+\$b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(\$json))
 
 # --- Open browser ---
-\$url = "${baseUrl}/?import=\$token${returnSuffix}"
+\$url = "${baseUrl}/?specs=\$([Uri]::EscapeDataString(\$b64))&via=script${returnSuffix}"
+Write-Host ""
 Write-Host "Opening browser..."
 Start-Process \$url
 
 Write-Host ""
 Write-Host "Done! Your specs should appear in the browser."
+Write-Host "If they don't, paste this code into the scanner box on the site:"
+Write-Host "DINAU:\$b64"
 `;
 }
