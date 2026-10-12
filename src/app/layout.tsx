@@ -5,37 +5,35 @@ import "./globals.css";
 import NavButtons from "@/components/NavButtons";
 import SettingsDropdown from "@/components/SettingsDropdown";
 import Logo from "@/components/Logo";
-import { StructuredData } from "@/components/StructuredData";
 import GeometricBackground from "@/components/GeometricBackground";
 import PerformanceHint from "@/components/PerformanceHint";
 import { SPLASH_SCREENS } from "@/lib/splashScreens";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://doineedtoupgrade.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Do I Need To Upgrade",
-    template: "%s | Do I Need To Upgrade",
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: "Check if your PC can run any Steam game. Compare your CPU, GPU, RAM and storage against game requirements instantly.",
+  description: SITE_DESCRIPTION,
   keywords: ["PC upgrade", "system requirements", "can I run it", "Steam games", "PC specs", "hardware check", "GPU comparison", "CPU benchmark"],
-  authors: [{ name: "Do I Need To Upgrade" }],
-  creator: "Do I Need To Upgrade",
-  alternates: {
-    canonical: "/",
-  },
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  // No canonical here: each page sets its own, so a page that forgets can't canonicalize to the home page
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "Do I Need To Upgrade",
-    title: "Do I Need To Upgrade",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
     description: "Check if your PC can run any Steam game. Compare your hardware against game requirements instantly.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Do I Need To Upgrade",
+    title: SITE_NAME,
     description: "Check if your PC can run any Steam game. Compare your hardware against game requirements instantly.",
   },
   robots: {
@@ -94,7 +92,6 @@ export default function RootLayout({
     <html lang="en" data-theme="dark" data-reduce-motion="false" className="h-full overflow-hidden" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <StructuredData />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans h-full w-full overflow-hidden flex flex-col bg-base-200 text-base-content`}>
         <GeometricBackground />

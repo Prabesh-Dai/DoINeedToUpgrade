@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, ReadonlyURLSearchParams } from "next/navigation";
 import { UserSpecs, GameDetails, GameRequirements, ComparisonItem, Platform, GameSource, HardwareScores } from "@/types";
 import { LuCircleCheck, LuX } from "react-icons/lu";
 import { compareSpecs } from "@/lib/compareSpecs";
@@ -52,8 +52,17 @@ function hasAnyField(reqs: GameRequirements): boolean {
   return Object.values(reqs).some((v) => v.trim() !== "");
 }
 
-function Home() {
+// useSearchParams makes everything up to the nearest Suspense boundary skip server rendering.
+// Reading it here, in an empty leaf, keeps the wizard itself in the server HTML for search engines.
+function SearchParamsReader({ onChange }: { onChange: (params: ReadonlyURLSearchParams) => void }) {
   const searchParams = useSearchParams();
+  useEffect(() => onChange(searchParams), [searchParams, onChange]);
+  return null;
+}
+
+export default function HomeWizard() {
+  // null until the client has read the URL
+  const [searchParams, setSearchParams] = useState<ReadonlyURLSearchParams | null>(null);
   const { cpuList, gpuList, cpuScores, gpuScores } = useBenchmarks();
   const [specs, setSpecs] = useState<UserSpecs>(defaultSpecs);
   const [detecting, setDetecting] = useState(true);
@@ -135,6 +144,7 @@ function Home() {
 
   // Load specs from URL params, localStorage, or detect automatically
   useEffect(() => {
+    if (!searchParams) return;
     // Read before the URL gets cleaned up below
     const returnGame = parseGameParams(searchParams);
 
@@ -225,7 +235,7 @@ function Home() {
   // Handle ?game= parameter from game page CTA
   useEffect(() => {
     // Scanner return URLs also carry ?game=; the import flow above handles those
-    if (searchParams.get("specs")) return;
+    if (!searchParams || searchParams.get("specs")) return;
     const gameParam = searchParams.get("game");
     if (gameParam && /^\d+$/.test(gameParam)) {
       // Clean up URL
@@ -465,6 +475,10 @@ function Home() {
 
   return (
     <div className="flex flex-col gap-8">
+      <Suspense fallback={null}>
+        <SearchParamsReader onChange={setSearchParams} />
+      </Suspense>
+
       {showStepper && (
         <WizardStepper
           currentStep={step}
@@ -651,14 +665,5 @@ function ManualHeader() {
         Enter your specs and the game&apos;s requirements yourself.
       </p>
     </div>
-  );
-}
-
-// Wrap in Suspense for useSearchParams
-export default function HomeWizard() {
-  return (
-    <Suspense fallback={<div className="flex justify-center p-16"><span className="loading loading-spinner loading-md text-primary" /></div>}>
-      <Home />
-    </Suspense>
   );
 }
