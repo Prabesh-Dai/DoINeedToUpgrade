@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LuSearch, LuGlobe, LuCornerDownLeft, LuArrowUp, LuArrowDown, LuGamepad2 } from "react-icons/lu";
 import { FaSteam } from "react-icons/fa";
 import { GameSearchResult, GameSource } from "@/types";
@@ -18,7 +18,9 @@ const sources: { id: GameSource; label: string; icon: typeof LuGlobe }[] = [
 ];
 
 export default function GameSearch({ onSelect, initialSource = "steam", busy = false }: Props) {
-  const isMac = useMemo(() => typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform), []);
+  // Set after mount: the server can't know the platform, and reading it during render breaks hydration
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => setIsMac(/Mac|iPhone|iPad|iPod/.test(navigator.platform)), []);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GameSearchResult[]>([]);
   const [searchedTerm, setSearchedTerm] = useState("");

@@ -1,13 +1,47 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import HomeWizard from "@/components/HomeWizard";
+import { StructuredData } from "@/components/StructuredData";
 import { uniquePopularGames } from "@/lib/popularGames";
-import { slugify } from "@/lib/slugify";
+import { gamePath } from "@/lib/slugify";
+import { SITE_NAME } from "@/lib/site";
+
+const title = `${SITE_NAME}? Check If Your PC Can Run Any Game`;
+
+export const metadata: Metadata = {
+  // The brand alone says nothing to searchers, so the home page spells out what the tool does
+  title: { absolute: title },
+  alternates: { canonical: "/" },
+  openGraph: { title, url: "/" },
+  twitter: { title },
+};
+
+const faqs = [
+  {
+    q: "How do I know if my PC can run a game?",
+    a: "Search for the game, confirm your specs, and we compare your CPU, GPU, RAM and storage with its minimum and recommended requirements. You get a result for each part, an overall verdict and a rough FPS estimate.",
+  },
+  {
+    q: "How do you find out what hardware I have?",
+    a: "Your browser reveals some of it, like your graphics card and operating system, so we start from that. For exact numbers, run the free scanner for Windows, macOS or Linux. It reads your hardware locally and opens this site with your specs filled in. You can also type them in yourself.",
+  },
+  {
+    q: "What should I upgrade first?",
+    a: "The results show which part falls short. When we know both your CPU and GPU, we also estimate how many frames each upgrade would add, so you can spend money where it actually helps.",
+  },
+  {
+    q: "Is it free, and are my specs stored anywhere?",
+    a: "It's free with no sign-up. Your specs are saved in your own browser so you don't have to enter them again, and you can clear them at any time.",
+  },
+];
 
 export default function Page() {
   const featured = uniquePopularGames.slice(0, 18);
 
   return (
     <>
+      <StructuredData />
+
       <div className="min-h-screen pb-24">
         <HomeWizard />
       </div>
@@ -29,7 +63,7 @@ export default function Page() {
           {featured.map((g) => (
             <li key={g.appid} className="min-w-0">
               <Link
-                href={`/game/${g.appid}/${slugify(g.name)}`}
+                href={gamePath(g.appid, g.name)}
                 className="block truncate text-base-content/60 underline-offset-4 hover:text-base-content hover:underline"
                 title={`Can I run ${g.name}?`}
               >
@@ -38,6 +72,16 @@ export default function Page() {
             </li>
           ))}
         </ul>
+
+        <h3 className="mt-6 text-base font-semibold text-base-content/80">Questions</h3>
+        <dl className="mt-2 flex flex-col gap-4 text-sm">
+          {faqs.map(({ q, a }) => (
+            <div key={q}>
+              <dt className="font-medium text-base-content/75">{q}</dt>
+              <dd className="mt-1">{a}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
     </>
   );
