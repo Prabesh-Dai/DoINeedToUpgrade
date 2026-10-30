@@ -9,18 +9,17 @@ interface Props {
   label?: string;
 }
 
-// Gap between the button and the note, and the closest the note gets to the screen edge
+// Space between the button and the note, and the minimum gap to the viewport edge
 const GAP = 6;
 const EDGE = 8;
 
 // Small "i" button that shows a floating note on hover, focus or tap.
-// Anchored to the right so it opens leftward; place it at the end of a row.
-// The note is rendered into <body> with fixed positioning so a card with
-// overflow-hidden can't clip it. It opens upward when there's no room below.
+// Lines up with the button's right edge so it opens leftward; place it at the end of a row.
+// The note renders in a portal so cards with overflow-hidden can't clip it.
 export default function InfoTip({ children, label = "More info" }: Props) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   const id = useId();
@@ -48,7 +47,7 @@ export default function InfoTip({ children, label = "More info" }: Props) {
     };
   }, [open]);
 
-  // Layout effect so the note is placed before it's painted
+  // Place the note under the button, or above it when there's no room below
   useLayoutEffect(() => {
     if (!open) {
       setPos(null);
@@ -56,17 +55,16 @@ export default function InfoTip({ children, label = "More info" }: Props) {
     }
     function place() {
       if (!ref.current || !tipRef.current) return;
-      const button = ref.current.getBoundingClientRect();
-      const tip = tipRef.current.getBoundingClientRect();
-      const viewportWidth = document.documentElement.clientWidth;
-      const below = button.bottom + GAP;
-      const fitsBelow = below + tip.height <= window.innerHeight - EDGE;
-      const fitsAbove = button.top - GAP - tip.height >= EDGE;
-      setPos({
-        top: !fitsBelow && fitsAbove ? button.top - GAP - tip.height : below,
-        // Keep the left edge on screen when the button sits near the left
-        right: Math.min(viewportWidth - button.right, viewportWidth - tip.width - EDGE),
-      });
+      const btn = ref.current.getBoundingClientRect();
+      // offset sizes ignore the scale from the open animation
+      const { offsetWidth: width, offsetHeight: height } = tipRef.current;
+      const viewW = document.documentElement.clientWidth;
+      const viewH = document.documentElement.clientHeight;
+      const below = btn.bottom + GAP;
+      const above = btn.top - GAP - height;
+      const top = below + height > viewH - EDGE && above >= EDGE ? above : below;
+      const left = Math.min(Math.max(btn.right - width, EDGE), viewW - width - EDGE);
+      setPos({ top, left });
     }
     place();
     // Capture catches scrolling in any container, not just the window
@@ -108,7 +106,7 @@ export default function InfoTip({ children, label = "More info" }: Props) {
           role="tooltip"
           className="fixed z-50 w-60 rounded border border-base-content/10 bg-base-100 px-3 py-2.5 text-left text-xs normal-case leading-relaxed tracking-normal text-base-content/80 shadow-lift animate-dropdownIn"
           // Hidden for the moment before it's measured and placed
-          style={pos ? { top: pos.top, right: pos.right } : { top: 0, right: 0, visibility: "hidden" }}
+          style={pos ? { top: pos.top, left: pos.left } : { top: 0, left: 0, visibility: "hidden" }}
         >
           {children}
         </span>,
