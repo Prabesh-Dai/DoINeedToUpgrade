@@ -11,28 +11,38 @@ import {
   RESOLUTION_STEPS,
 } from "@/lib/useFpsSettings";
 
+// "sm" fits beside a result; "md" is the roomier size for the settings dialog
+type Size = "sm" | "md";
+
+const sizes: Record<Size, { arrow: string; icon: string; slot: string }> = {
+  sm: { arrow: "h-6 w-6", icon: "h-3.5 w-3.5", slot: "h-6 w-16 text-xs" },
+  md: { arrow: "h-9 w-9", icon: "h-4 w-4", slot: "h-9 w-24 text-sm" },
+};
+
 const arrowClass =
-  "grid h-6 w-6 place-items-center rounded-sm text-base-content/60 transition-colors hover:bg-base-content/[0.08] hover:text-base-content disabled:pointer-events-none disabled:opacity-30";
+  "grid place-items-center rounded-sm text-base-content/60 transition-colors hover:bg-base-content/[0.08] hover:text-base-content disabled:pointer-events-none disabled:opacity-30";
 
 // Every stepper's value sits in the same fixed slot, so the three controls
 // match in width and their values line up on the same centre
-const slotClass = "flex h-6 w-16 items-center justify-center rounded-sm text-xs font-semibold tabular-nums";
+const slotClass = "flex items-center justify-center rounded-sm font-semibold tabular-nums";
 
 /** ‹ value › control. An arrow is disabled when its handler is missing */
-function Stepper({ label, onPrev, onNext, children }: {
+function Stepper({ label, size, onPrev, onNext, children }: {
   label: string;
+  size: Size;
   onPrev?: () => void;
   onNext?: () => void;
   children: React.ReactNode;
 }) {
+  const s = sizes[size];
   return (
-    <div role="group" aria-label={label} className="inline-flex w-fit items-center rounded bg-base-content/[0.06] p-0.5">
-      <button type="button" className={arrowClass} aria-label={`Lower ${label.toLowerCase()}`} disabled={!onPrev} onClick={onPrev}>
-        <LuChevronLeft className="h-3.5 w-3.5" />
+    <div role="group" aria-label={label} className="inline-flex w-fit shrink-0 items-center rounded bg-base-content/[0.06] p-0.5">
+      <button type="button" className={`${arrowClass} ${s.arrow}`} aria-label={`Lower ${label.toLowerCase()}`} disabled={!onPrev} onClick={onPrev}>
+        <LuChevronLeft className={s.icon} />
       </button>
       {children}
-      <button type="button" className={arrowClass} aria-label={`Higher ${label.toLowerCase()}`} disabled={!onNext} onClick={onNext}>
-        <LuChevronRight className="h-3.5 w-3.5" />
+      <button type="button" className={`${arrowClass} ${s.arrow}`} aria-label={`Higher ${label.toLowerCase()}`} disabled={!onNext} onClick={onNext}>
+        <LuChevronRight className={s.icon} />
       </button>
     </div>
   );
@@ -42,8 +52,9 @@ function Stepper({ label, onPrev, onNext, children }: {
  * Stepper with a typeable number. The arrows (and the Up/Down keys) move to the
  * next common value; typing sets any value in range, applied on Enter or blur.
  */
-function NumberStepper({ label, unit, spaced = false, value, steps, range, onChange }: {
+function NumberStepper({ label, size, unit, spaced = false, value, steps, range, onChange }: {
   label: string;
+  size: Size;
   unit: string;
   /** Space before the unit: "540 Hz", but "1600p" */
   spaced?: boolean;
@@ -89,6 +100,7 @@ function NumberStepper({ label, unit, spaced = false, value, steps, range, onCha
   return (
     <Stepper
       label={label}
+      size={size}
       onPrev={prev !== undefined ? () => onChange(prev) : undefined}
       onNext={next !== undefined ? () => onChange(next) : undefined}
     >
@@ -96,7 +108,7 @@ function NumberStepper({ label, unit, spaced = false, value, steps, range, onCha
           text decoration rather than a border so it doesn't shift the alignment */}
       <label
         title="Type a value, or use the arrows"
-        className={`${slotClass} group cursor-text transition-colors hover:bg-base-content/[0.06] focus-within:bg-base-100 focus-within:ring-1 focus-within:ring-base-content/30`}
+        className={`${slotClass} ${sizes[size].slot} group cursor-text transition-colors hover:bg-base-content/[0.06] focus-within:bg-base-100 focus-within:ring-1 focus-within:ring-base-content/30`}
       >
         <input
           type="text"
@@ -117,13 +129,22 @@ function NumberStepper({ label, unit, spaced = false, value, steps, range, onCha
   );
 }
 
-// Field labels sit a level below the uppercase eyebrows (like "Results for"),
-// so they're sentence case, regular weight and fainter, and don't compete
-function Field({ label, list, children }: { label: string; list: boolean; children: React.ReactNode }) {
+// Beside a result, field labels sit a level below the uppercase eyebrows (like
+// "Results for"), so they're small and faint. In the dialog they're the main
+// text of each row, with an optional hint underneath.
+function Field({ label, hint, list, children }: {
+  label: string;
+  hint?: React.ReactNode;
+  list: boolean;
+  children: React.ReactNode;
+}) {
   if (list) {
     return (
       <div className="flex items-center justify-between gap-4">
-        <span className="text-sm text-base-content/70">{label}</span>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{label}</p>
+          {hint && <p className="mt-0.5 text-xs text-base-content/50">{hint}</p>}
+        </div>
         {children}
       </div>
     );
@@ -139,24 +160,28 @@ function Field({ label, list, children }: { label: string; list: boolean; childr
 /**
  * Resolution, quality and display refresh rate the FPS estimate is for.
  * "row" sits beside a result and wraps when narrow; "list" puts one setting per
- * line with the label on the left, for the settings dialog.
+ * line with larger controls, for the settings dialog.
  */
-export default function FpsSettingsBar({ settings, layout = "row", className = "" }: {
+export default function FpsSettingsBar({ settings, layout = "row", displayHint, className = "" }: {
   settings: FpsSettings;
   layout?: "row" | "list";
+  /** Shown under the Display label in the list layout */
+  displayHint?: React.ReactNode;
   className?: string;
 }) {
   const list = layout === "list";
+  const size: Size = list ? "md" : "sm";
   const { graphics, setGraphics, displayHz, setDisplayHz } = settings;
   const presetIndex = PRESETS.findIndex((p) => p.value === graphics.preset);
   const lowerPreset = PRESETS[presetIndex - 1];
   const higherPreset = PRESETS[presetIndex + 1];
 
   return (
-    <div className={`${list ? "flex flex-col gap-3" : "flex flex-wrap items-end gap-x-3 gap-y-3"} ${className}`}>
+    <div className={`${list ? "flex flex-col gap-5" : "flex flex-wrap items-end gap-x-3 gap-y-3"} ${className}`}>
       <Field label="Resolution" list={list}>
         <NumberStepper
           label="Resolution"
+          size={size}
           unit="p"
           value={graphics.resolution}
           steps={RESOLUTION_STEPS}
@@ -167,17 +192,19 @@ export default function FpsSettingsBar({ settings, layout = "row", className = "
       <Field label="Quality" list={list}>
         <Stepper
           label="Quality"
+          size={size}
           onPrev={lowerPreset && (() => setGraphics({ preset: lowerPreset.value }))}
           onNext={higherPreset && (() => setGraphics({ preset: higherPreset.value }))}
         >
-          <span className={slotClass} aria-live="polite">
+          <span className={`${slotClass} ${sizes[size].slot}`} aria-live="polite">
             {PRESETS[presetIndex].label}
           </span>
         </Stepper>
       </Field>
-      <Field label="Display" list={list}>
+      <Field label="Display" hint={displayHint} list={list}>
         <NumberStepper
           label="Refresh rate"
+          size={size}
           unit="Hz"
           spaced
           value={displayHz}
