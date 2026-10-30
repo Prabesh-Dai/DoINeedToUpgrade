@@ -1,11 +1,12 @@
-import { HardwareScores, FpsEstimate, UpgradeImpact, UpgradeOption, VerdictResult, ComparisonItem } from "@/types";
+import { HardwareScores, FpsEstimate, UpgradeImpact, UpgradeOption, VerdictResult, ComparisonItem, GraphicsSettings, QualityPreset } from "@/types";
 import { upgradeGpus, upgradeCpus } from "@/lib/hardwareData";
 
 const REC_ANCHOR_FPS = 60;
 const MIN_ANCHOR_FPS = 30;
 const BASELINE_FPS   = 60;
 const UNCERTAINTY    = 0.25;
-const MAX_FPS        = 300;
+// High enough that a fast PC on light settings can still clear a 360 Hz display
+const MAX_FPS        = 500;
 // Every SCORE_SCALE points above the recommended spec doubles the predicted FPS,
 // and every SCORE_SCALE points below halves it. This handles score-scale compression
 // better than a power function: a score ratio of 3x can represent a real-world gap
@@ -29,6 +30,24 @@ const BALANCED_RATIO = 1.3;
 const UPGRADE_STEP     = 1.25;
 const MIN_UPGRADE_STEP = 1.1;
 
+// The anchors above assume the recommended specs mean 60fps at 1080p High.
+// These scale each part's FPS for other settings. Resolution only changes GPU
+// work: the CPU does the same work per frame at any resolution. Lower presets
+// mostly lighten the GPU load, and trim a little CPU work (view distance,
+// crowds). Typical averages from GPU reviews; individual games vary a lot.
+export const DEFAULT_GRAPHICS: GraphicsSettings = { resolution: 1080, preset: "high" };
+// GPU FPS falls with pixel count, but slower than the count rises, since part
+// of each frame doesn't depend on resolution. This exponent matches the review
+// averages of about 0.7x at 1440p and 0.4x at 4K.
+const RESOLUTION_EXPONENT = 0.64;
+const PRESET_GPU: Record<QualityPreset, number>   = { low: 1.7, medium: 1.3, high: 1, ultra: 0.8 };
+const PRESET_CPU: Record<QualityPreset, number>   = { low: 1.15, medium: 1.07, high: 1, ultra: 0.95 };
+
+/** GPU FPS multiplier for a resolution, relative to 1080p (same aspect ratio, so pixels scale with height²) */
+function resolutionScale(height: number): number {
+  return Math.pow((height / 1080) ** 2, -RESOLUTION_EXPONENT);
+}
+
 /**
  * Estimate the FPS contribution of a single hardware component.
  *
@@ -36,6 +55,11 @@ const MIN_UPGRADE_STEP = 1.1;
  * for recommended specs (when available). Below minimum, the curve extrapolates
  * downward smoothly rather than using a separate linear formula — this avoids
  * a discontinuity at the min threshold.
+ *
+ * Above recommended, the curve switches to the benchmark slope (SCORE_SCALE).
+ * The min→rec slope is set by how far apart the publisher listed the two
+ * parts, which is often too close: carrying it past rec made fast parts look
+ * two or three times faster than benchmarks show.
  */
 function componentFps(
   userScore: number | null,
@@ -53,11 +77,11 @@ function componentFps(
     // Then fps = 30 * base^(userScore - minScore)
     // This is continuous across the entire range including below minimum.
     const gap = recScore - minScore;
-    if (gap > 0) {
+    if (gap > 0 && userScore <= recScore) {
       const fps = MIN_ANCHOR_FPS * Math.pow(2, (userScore - minScore) / gap);
       return { fps, failsMin };
     }
-    // rec ≈ min — fall through to single-anchor formula
+    // Above rec (or rec ≈ min) — benchmark slope from the rec anchor
     const fps = REC_ANCHOR_FPS * Math.pow(2, (userScore - recScore) / SCORE_SCALE);
     return { fps, failsMin };
   }
@@ -117,7 +141,7 @@ function ramPenalty(
   return { multiplier: 1, isBottleneck: false };
 }
 
-export function estimateFps(scores: HardwareScores): FpsEstimate {
+export function estimateFps(scores: HardwareScores, graphics: GraphicsSettings = DEFAULT_GRAPHICS): FpsEstimate {
   const useRec = scores.recGpuScore !== null || scores.recCpuScore !== null;
   const useMin = scores.minGpuScore !== null || scores.minCpuScore !== null;
 
@@ -126,8 +150,11 @@ export function estimateFps(scores: HardwareScores): FpsEstimate {
   const gpu = componentFps(scores.userGpuScore, scores.minGpuScore, scores.recGpuScore);
   const cpu = componentFps(scores.userCpuScore, scores.minCpuScore, scores.recCpuScore);
 
-  const fpsByGpu = gpu.fps;
-  const fpsByCpu = cpu.fps;
+  // Scaling before the two are combined lets the bottleneck shift with
+  // settings: at 4K the GPU sets the pace, at Low the CPU does more often
+  const gpuScale = resolutionScale(graphics.resolution) * PRESET_GPU[graphics.preset];
+  const fpsByGpu = gpu.fps === null ? null : gpu.fps * gpuScale;
+  const fpsByCpu = cpu.fps === null ? null : cpu.fps * PRESET_CPU[graphics.preset];
 
   if (fpsByGpu === null && fpsByCpu === null) {
     return { low: 0, high: 0, mid: 0, bottleneck: "balanced", confidence: "none" };
@@ -253,13 +280,14 @@ export function estimateUpgrades(
   userCpu: string,
   cpuScores: Record<string, number>,
   gpuScores: Record<string, number>,
+  graphics: GraphicsSettings = DEFAULT_GRAPHICS,
 ): UpgradeImpact | null {
-  const current = estimateFps(scores);
+  const current = estimateFps(scores, graphics);
   if (current.confidence !== "good") return null;
   if (scores.userGpuScore === null || scores.userCpuScore === null) return null;
 
   const gain = (next: HardwareScores) => {
-    const fps = estimateFps(next).mid;
+    const fps = estimateFps(next, graphics).mid;
     return { fps, gain: Math.max(0, fps - current.mid) };
   };
 

@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { LuSettings, LuSun, LuMoon, LuSparkles } from "react-icons/lu";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LuSettings, LuSun, LuMoon, LuSparkles, LuMonitor } from "react-icons/lu";
+import FpsSettingsDialog from "@/components/FpsSettingsDialog";
+import { PRESETS, resolutionLabel, useFpsSettings } from "@/lib/useFpsSettings";
 
 export default function SettingsDropdown() {
   const [open, setOpen] = useState(false);
+  const [graphicsOpen, setGraphicsOpen] = useState(false);
   const [dark, setDark] = useState(true);
   const [reduced, setReduced] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { graphics } = useFpsSettings();
+  // Stable, so the dialog doesn't rerun its focus effect (and steal focus) on every settings change
+  const closeGraphics = useCallback(() => setGraphicsOpen(false), []);
 
   useEffect(() => {
     // No saved choice: follow the system theme (and keep following it if it changes)
@@ -95,8 +101,27 @@ export default function SettingsDropdown() {
             </span>
             <input type="checkbox" className="toggle toggle-primary toggle-sm" checked={!reduced} onChange={toggleMotion} />
           </label>
+          <div className="mx-2.5 my-1 border-t border-base-content/[0.08]" />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center justify-between gap-3 rounded px-2.5 py-2 text-left text-sm hover:bg-base-content/5"
+            onClick={() => {
+              setOpen(false);
+              setGraphicsOpen(true);
+            }}
+          >
+            <span className="flex items-center gap-2.5">
+              <LuMonitor className="h-4 w-4 text-base-content/60" />
+              Graphics
+            </span>
+            <span className="text-xs tabular-nums text-base-content/50">
+              {resolutionLabel(graphics.resolution)} · {PRESETS.find((p) => p.value === graphics.preset)!.label}
+            </span>
+          </button>
         </div>
       )}
+      {graphicsOpen && <FpsSettingsDialog onClose={closeGraphics} />}
     </div>
   );
 }

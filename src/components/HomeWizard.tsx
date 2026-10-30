@@ -8,6 +8,7 @@ import { compareSpecs } from "@/lib/compareSpecs";
 import { estimateFps, estimateUpgrades } from "@/lib/fpsEstimate";
 import { computeVerdict } from "@/lib/computeVerdict";
 import { useBenchmarks } from "@/lib/useBenchmarks";
+import { useFpsSettings } from "@/lib/useFpsSettings";
 import { detectClientSpecs } from "@/lib/detectClientSpecs";
 import { fuzzyMatchHardware } from "@/lib/fuzzyMatch";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
@@ -64,6 +65,7 @@ export default function HomeWizard() {
   // null until the client has read the URL
   const [searchParams, setSearchParams] = useState<ReadonlyURLSearchParams | null>(null);
   const { cpuList, gpuList, cpuScores, gpuScores } = useBenchmarks();
+  const fpsSettings = useFpsSettings();
   const [specs, setSpecs] = useState<UserSpecs>(defaultSpecs);
   const [detecting, setDetecting] = useState(true);
   const [unmatchedFields, setUnmatchedFields] = useState<string[]>([]);
@@ -277,8 +279,9 @@ export default function HomeWizard() {
   }, [step, manualMode]);
 
   const verdict = comparison ? computeVerdict(comparison) : null;
-  const fpsEstimate = hardwareScores ? estimateFps(hardwareScores) : null;
-  const upgradeImpact = hardwareScores ? estimateUpgrades(hardwareScores, specs.cpu, cpuScores, gpuScores) : null;
+  const { graphics } = fpsSettings;
+  const fpsEstimate = hardwareScores ? estimateFps(hardwareScores, graphics) : null;
+  const upgradeImpact = hardwareScores ? estimateUpgrades(hardwareScores, specs.cpu, cpuScores, gpuScores, graphics) : null;
 
   const runComparison = useCallback(
     (min?: GameRequirements, rec?: GameRequirements) => {
@@ -634,6 +637,7 @@ export default function HomeWizard() {
           onPlatformChange={handlePlatformChange}
           fpsEstimate={fpsEstimate}
           upgradeImpact={upgradeImpact}
+          fpsSettings={fpsSettings}
         />
       )}
 

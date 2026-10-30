@@ -8,12 +8,12 @@ interface Props {
   impact: UpgradeImpact | null;
   verdict: VerdictResult | null;
   comparison: ComparisonItem[] | null;
+  /** Refresh rate of the user's display. Frames past it never reach the screen, so they aren't worth upgrading for */
+  displayHz: number;
 }
 
 // Gains below this read as "no real difference"
 const SMALL_GAIN = 3;
-// Past this (the top of the FPS meter), more frames aren't worth upgrading for
-const PLENTY_FPS = 120;
 
 const labels: Record<UpgradeOption["component"], string> = {
   gpu: "Graphics",
@@ -62,7 +62,7 @@ function Detail({ option }: { option: UpgradeOption }) {
   return <><b className="font-semibold">{option.target}</b> gets you about {option.fps} fps</>;
 }
 
-export default function FpsBreakdown({ impact, verdict, comparison }: Props) {
+export default function FpsBreakdown({ impact, verdict, comparison, displayHz }: Props) {
   if (!impact || fpsHiddenReason(verdict, comparison)) return null;
 
   const userValue = (component: UpgradeOption["component"]) => {
@@ -70,10 +70,10 @@ export default function FpsBreakdown({ impact, verdict, comparison }: Props) {
     // CPU values can carry a clock speed suffix ("... @ 3.4 GHz")
     return item ? shortName(item.userValue.split(" @ ")[0]) : null;
   };
-  const plenty = impact.currentFps >= PLENTY_FPS;
+  const plenty = impact.currentFps >= displayHz;
   const limitMaxed = impact.options.some((o) => o.component === impact.bottleneck && !o.target);
   const headline = plenty
-    ? `You're already past ${PLENTY_FPS} fps, so an upgrade won't be noticeable.`
+    ? `You're already past what your ${displayHz} Hz display can show, so an upgrade won't be noticeable.`
     : (limitMaxed && maxedHeadlines[impact.bottleneck]) || headlines[impact.bottleneck];
   const fixed = isFixedHardware(userValue("gpu") ?? "", userValue("cpu") ?? "");
 
@@ -83,7 +83,7 @@ export default function FpsBreakdown({ impact, verdict, comparison }: Props) {
         <p className="eyebrow">What affects your FPS</p>
         <span className="-my-1.5 -mr-1">
           <InfoTip label="About these numbers">
-            Rough numbers from benchmark scores and the game&apos;s listed specs. Resolution and settings change this too. At 4K the GPU matters more, at low settings the CPU does.
+            Rough numbers from benchmark scores and the game&apos;s listed specs, at the resolution and quality you picked. At 4K the GPU matters more, at low settings the CPU does.
           </InfoTip>
         </span>
       </div>
@@ -132,7 +132,7 @@ export default function FpsBreakdown({ impact, verdict, comparison }: Props) {
                       <span className={small ? "text-lg font-semibold text-base-content/40" : "text-lg font-bold"}>+{option.gain}</span>
                       <span className="ml-0.5 text-xs font-semibold text-base-content/50">fps</span>
                       <span className="mt-1.5 block h-1.5 overflow-hidden rounded-sm bg-base-content/10">
-                        <span className="block h-full animate-growX bg-base-content" style={{ width: `${pct}%` }} />
+                        <span className="block h-full animate-growX bg-base-content transition-[width] duration-500 ease-out" style={{ width: `${pct}%` }} />
                       </span>
                     </>
                   )}

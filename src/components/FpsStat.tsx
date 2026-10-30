@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ComparisonItem, FpsEstimate, VerdictResult } from "@/types";
 import { LuEye } from "react-icons/lu";
 import InfoTip from "@/components/InfoTip";
 import { fpsHiddenReason } from "@/lib/fpsEstimate";
+import { FpsSettings, PRESETS, resolutionLabel } from "@/lib/useFpsSettings";
 
 interface Props {
   fpsEstimate: FpsEstimate | null | undefined;
   verdict: VerdictResult | null;
   comparison: ComparisonItem[] | null;
+  settings: FpsSettings;
 }
-
-const METER_MAX = 120;
 
 function tierColor(fps: number): string {
   if (fps < 30) return "bg-error";
@@ -20,16 +20,19 @@ function tierColor(fps: number): string {
   return "bg-success";
 }
 
+/** Counts from the number on screen, so changing settings eases to the new value instead of restarting at 0 */
 function useCountUp(target: number) {
   const [count, setCount] = useState(0);
+  const countRef = useRef(0);
 
   useEffect(() => {
     const reduced = document.documentElement.getAttribute("data-reduce-motion") === "true";
     if (reduced || target <= 0) {
-      setCount(Math.max(target, 0));
+      countRef.current = Math.max(target, 0);
+      setCount(countRef.current);
       return;
     }
-    setCount(0);
+    const from = countRef.current;
     const duration = 900;
     const startTime = performance.now();
     let rafId: number;
@@ -37,7 +40,8 @@ function useCountUp(target: number) {
     function tick(now: number) {
       const t = Math.min((now - startTime) / duration, 1);
       const eased = 1 - (1 - t) ** 3;
-      setCount(Math.round(eased * target));
+      countRef.current = Math.round(from + eased * (target - from));
+      setCount(countRef.current);
       if (t < 1) rafId = requestAnimationFrame(tick);
     }
 
@@ -58,25 +62,33 @@ function Header({ title = "Estimated FPS", note }: { title?: string; note?: Reac
   );
 }
 
-function Meter({ value }: { value: number }) {
-  const pct = Math.min(value / METER_MAX, 1) * 100;
+/** Full bar = the display's refresh rate, since frames past that never reach the screen */
+function Meter({ value, max }: { value: number; max: number }) {
+  const pct = Math.min(value / max, 1) * 100;
+  // Skip ticks that would crowd the label at the end
+  const ticks = [30, 60].filter((t) => t <= max * 0.8);
   return (
     <div className="mt-3">
       <div className="relative h-1.5 w-full overflow-hidden rounded-sm bg-base-content/10">
-        <div className={`absolute inset-y-0 left-0 animate-growX ${tierColor(value)}`} style={{ width: `${pct}%` }} />
-        <span className="absolute inset-y-0 left-1/4 w-px bg-base-100" />
-        <span className="absolute inset-y-0 left-1/2 w-px bg-base-100" />
+        <div
+          className={`absolute inset-y-0 left-0 animate-growX transition-[width] duration-500 ease-out ${tierColor(value)}`}
+          style={{ width: `${pct}%` }}
+        />
+        {ticks.map((t) => (
+          <span key={t} className="absolute inset-y-0 w-px bg-base-100" style={{ left: `${(t / max) * 100}%` }} />
+        ))}
       </div>
       <div className="relative mt-1 h-3 text-[10px] tabular-nums text-base-content/40">
-        <span className="absolute left-1/4 -translate-x-1/2">30</span>
-        <span className="absolute left-1/2 -translate-x-1/2">60</span>
-        <span className="absolute right-0">120</span>
+        {ticks.map((t) => (
+          <span key={t} className="absolute -translate-x-1/2" style={{ left: `${(t / max) * 100}%` }}>{t}</span>
+        ))}
+        <span className="absolute right-0">{max} Hz</span>
       </div>
     </div>
   );
 }
 
-export default function FpsStat({ fpsEstimate, verdict, comparison }: Props) {
+export default function FpsStat({ fpsEstimate, verdict, comparison, settings }: Props) {
   const [showHidden, setShowHidden] = useState(false);
 
   const hasEstimate = !!fpsEstimate && fpsEstimate.confidence !== "none";
@@ -101,7 +113,10 @@ export default function FpsStat({ fpsEstimate, verdict, comparison }: Props) {
         ? "This might not match real performance, since your PC doesn't fully fit these requirements."
         : fpsEstimate!.confidence === "limited"
           ? "Rough estimate. We only had part of the data we need."
-          : "Based on how your CPU and GPU scores compare to the game's requirements.";
+          : "Based on how your CPU and GPU scores compare to the game's requirements. We take the recommended specs to mean 60 fps at 1080p High and scale from there, so expect some games to differ.";
+
+    const { graphics } = settings;
+    const settingsLabel = `${resolutionLabel(graphics.resolution)} ${PRESETS.find((p) => p.value === graphics.preset)!.label}`;
 
     // Same markup whether hidden or shown, so revealing it never shifts the layout
     const body = (value: number) => (
@@ -111,9 +126,9 @@ export default function FpsStat({ fpsEstimate, verdict, comparison }: Props) {
           <span className="text-sm font-semibold text-base-content/50">fps</span>
         </p>
         <p className="mt-1.5 text-sm text-base-content/60 tabular-nums">
-          Usually {fpsEstimate!.low}–{fpsEstimate!.high} fps
+          Usually {fpsEstimate!.low}–{fpsEstimate!.high} fps <span className="whitespace-nowrap">at {settingsLabel}</span>
         </p>
-        <Meter value={fpsEstimate!.mid} />
+        <Meter value={fpsEstimate!.mid} max={settings.displayHz} />
       </>
     );
 

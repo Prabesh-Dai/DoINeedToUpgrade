@@ -6,10 +6,12 @@ import { compareSpecs } from "@/lib/compareSpecs";
 import { computeVerdict } from "@/lib/computeVerdict";
 import { estimateFps, estimateUpgrades } from "@/lib/fpsEstimate";
 import { useBenchmarks } from "@/lib/useBenchmarks";
+import { useFpsSettings } from "@/lib/useFpsSettings";
 import VerdictPanel from "@/components/VerdictPanel";
 import ComparisonResult from "@/components/ComparisonResult";
 import FpsStat from "@/components/FpsStat";
 import FpsBreakdown from "@/components/FpsBreakdown";
+import FpsSettingsBar from "@/components/FpsSettingsBar";
 import { LuArrowRight, LuPencil } from "react-icons/lu";
 import Link from "next/link";
 
@@ -23,6 +25,7 @@ function hasAnyField(reqs: GameRequirements): boolean {
 
 export default function GamePageClient({ game }: Props) {
   const { cpuScores, gpuScores, loading } = useBenchmarks();
+  const fpsSettings = useFpsSettings();
   const [specs, setSpecs] = useState<UserSpecs | null>(null);
   const [hasChecked, setHasChecked] = useState(false);
 
@@ -73,18 +76,19 @@ export default function GamePageClient({ game }: Props) {
 
   const { items, scores } = compareSpecs(specs, minArg, recArg, cpuScores, gpuScores);
   const verdict = computeVerdict(items);
-  const fpsEstimate = estimateFps(scores);
-  const upgradeImpact = estimateUpgrades(scores, specs.cpu, cpuScores, gpuScores);
+  const fpsEstimate = estimateFps(scores, fpsSettings.graphics);
+  const upgradeImpact = estimateUpgrades(scores, specs.cpu, cpuScores, gpuScores, fpsSettings.graphics);
 
   return (
     <div className="flex flex-col gap-4">
+      {fpsEstimate.confidence !== "none" && <FpsSettingsBar settings={fpsSettings} />}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_15rem]">
         <VerdictPanel result={verdict} />
         <section className="card p-5 md:self-start">
-          <FpsStat fpsEstimate={fpsEstimate} verdict={verdict} comparison={items} />
+          <FpsStat fpsEstimate={fpsEstimate} verdict={verdict} comparison={items} settings={fpsSettings} />
         </section>
       </div>
-      <FpsBreakdown impact={upgradeImpact} verdict={verdict} comparison={items} />
+      <FpsBreakdown impact={upgradeImpact} verdict={verdict} comparison={items} displayHz={fpsSettings.displayHz} />
       <ComparisonResult items={items} />
       <div className="flex justify-center">
         <Link href={`/?game=${game.appid}`} className="btn btn-ghost btn-sm gap-2">

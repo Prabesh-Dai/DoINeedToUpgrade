@@ -89,6 +89,15 @@ export interface HardwareScores {
   recRamGB: number | null;
 }
 
+export type QualityPreset = "low" | "medium" | "high" | "ultra";
+
+/** The in-game settings an FPS estimate is for */
+export interface GraphicsSettings {
+  /** Vertical resolution in pixels (1080, 1440, 2160...), on a 16:9 screen */
+  resolution: number;
+  preset: QualityPreset;
+}
+
 export type FpsConfidence = "good" | "limited" | "none";
 
 export interface FpsEstimate {
