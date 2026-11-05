@@ -6,6 +6,7 @@ import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
 import { gameQuery, ScannerGame } from "@/lib/scannerGameParam";
 import { LuCircleCheck, LuTriangleAlert, LuDownload, LuClipboardPaste, LuCopy, LuCheck, LuScanLine, LuTerminal, LuChevronDown } from "react-icons/lu";
 import { track } from "@vercel/analytics";
+import { trackAdsConversion } from "@/lib/googleAds";
 
 interface Props {
   onImport: (specs: UserSpecs) => void;
@@ -204,7 +205,10 @@ export default function HardwareScanner({ onImport, game }: Props) {
             key={app.file}
             href={app.file}
             className="btn btn-sm btn-outline h-auto min-h-9 w-full justify-start py-2 text-left leading-snug"
-            onClick={() => track("scanner_download", { platform: clientPlatform, file: app.label, from: "panel" })}
+            onClick={() => {
+              track("scanner_download", { platform: clientPlatform, file: app.label, from: "panel" });
+              trackAdsConversion("scanner");
+            }}
           >
             <LuDownload className="h-4 w-4 shrink-0" />
             {info.appFiles.length > 1 ? app.label : "Download scanner"}

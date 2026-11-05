@@ -7,6 +7,7 @@ import SettingsDropdown from "@/components/SettingsDropdown";
 import Logo from "@/components/Logo";
 import GeometricBackground from "@/components/GeometricBackground";
 import PerformanceHint from "@/components/PerformanceHint";
+import GoogleAdsTag from "@/components/GoogleAdsTag";
 import { SPLASH_SCREENS } from "@/lib/splashScreens";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 
@@ -111,6 +112,7 @@ export default function RootLayout({
         </main>
         <PerformanceHint />
         <Analytics />
+        <GoogleAdsTag />
       </body>
     </html>
   );

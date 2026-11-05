@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { track } from "@vercel/analytics";
+import { trackAdsConversion } from "@/lib/googleAds";
 import { LuDownload, LuInfo, LuX, LuGamepad2, LuCpu, LuGauge, LuShieldCheck, LuGithub, LuArrowUpRight } from "react-icons/lu";
 
 type ClientPlatform = "windows" | "macos" | "linux";
@@ -117,6 +118,7 @@ export default function NavButtons() {
                 role="menuitem"
                 onClick={() => {
                   track("scanner_download", { platform: clientPlatform, file: link.label, from: "header" });
+                  trackAdsConversion("scanner");
                   setDropdownOpen(false);
                 }}
                 className="mb-1 flex items-center gap-3 rounded bg-primary px-3 py-2.5 text-primary-content transition-opacity hover:opacity-90"
@@ -137,6 +139,7 @@ export default function NavButtons() {
                 role="menuitem"
                 onClick={() => {
                   track("scanner_download", { platform: clientPlatform, file: link.label, from: "header" });
+                  trackAdsConversion("scanner");
                   setDropdownOpen(false);
                 }}
                 className="flex items-center justify-between gap-3 rounded px-2.5 py-2 text-sm hover:bg-base-content/5 transition-colors"

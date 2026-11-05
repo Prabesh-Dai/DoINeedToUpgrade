@@ -13,6 +13,7 @@ import { detectClientSpecs } from "@/lib/detectClientSpecs";
 import { fuzzyMatchHardware } from "@/lib/fuzzyMatch";
 import { decodeSpecsPayload } from "@/lib/decodeSpecsPayload";
 import { track } from "@vercel/analytics";
+import { trackAdsConversion } from "@/lib/googleAds";
 import { getPendingGame, clearPendingGame, savePendingGame } from "@/lib/pendingGameCheck";
 import { parseGameParams, ScannerGame } from "@/lib/scannerGameParam";
 import WizardStepper from "@/components/WizardStepper";
@@ -282,6 +283,12 @@ export default function HomeWizard() {
   const { graphics } = fpsSettings;
   const fpsEstimate = hardwareScores ? estimateFps(hardwareScores, graphics) : null;
   const upgradeImpact = hardwareScores ? estimateUpgrades(hardwareScores, specs.cpu, cpuScores, gpuScores, graphics) : null;
+
+  // A finished check is the Google Ads conversion. Count it once per game, not on every re-run.
+  const checkedGame = step === 3 && comparison ? game?.appid ?? "manual" : null;
+  useEffect(() => {
+    if (checkedGame !== null) trackAdsConversion("check");
+  }, [checkedGame]);
 
   const runComparison = useCallback(
     (min?: GameRequirements, rec?: GameRequirements) => {
