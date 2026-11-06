@@ -20,8 +20,18 @@ export async function fetchGameDetails(appid: string): Promise<GameDetails | nul
  * page in the cache, while null would cache a 404 that search engines then drop.
  */
 export async function fetchGameDetailsOrThrow(appid: string): Promise<GameDetails | null> {
+  const game = await fetchFromSteam(appid);
+  if (!game || game.availablePlatforms.length > 0) return game;
+  // Steam now and then answers without the requirements, and the day-long cache kept serving that
+  // (Battlefield 6, ELDEN RING and others showed "no requirements" in production). Ask once more,
+  // under a different cache key, before believing a game has none.
+  return (await fetchFromSteam(appid, "&cc=us").catch(() => null)) ?? game;
+}
+
+async function fetchFromSteam(appid: string, extraParams = ""): Promise<GameDetails | null> {
+  // English always: the requirement parser only understands Steam's English labels
   const res = await fetch(
-    `https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(appid)}`,
+    `https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(appid)}&l=english${extraParams}`,
     { next: { revalidate: 86400 } } as RequestInit
   );
 
