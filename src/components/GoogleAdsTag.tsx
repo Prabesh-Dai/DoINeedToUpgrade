@@ -1,4 +1,3 @@
-import Script from "next/script";
 import { GOOGLE_ADS_ID } from "@/lib/googleAds";
 
 // EEA, UK and Switzerland need consent for ad cookies, and the site has no consent banner, so there they
@@ -8,6 +7,9 @@ const CONSENT_REGIONS = [
   "LI", "LT", "LU", "MT", "NL", "NO", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "GB", "CH",
 ];
 
+// Rendered into <head> as plain tags, the way Google's install instructions ask. next/script would only
+// inject it after hydration, so the served HTML had no tag (Google Ads flagged the site as "missing a
+// Google tag") and visitors who left before hydration were never seen.
 export default function GoogleAdsTag() {
   if (!GOOGLE_ADS_ID) return null;
 
@@ -21,8 +23,8 @@ gtag("config", ${JSON.stringify(GOOGLE_ADS_ID)});`;
 
   return (
     <>
-      <Script id="google-ads-init" strategy="afterInteractive">{init}</Script>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} strategy="afterInteractive" />
+      <script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} />
+      <script dangerouslySetInnerHTML={{ __html: init }} />
     </>
   );
 }

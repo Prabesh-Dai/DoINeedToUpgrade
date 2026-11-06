@@ -93,6 +93,7 @@ export default function RootLayout({
     <html lang="en" data-theme="dark" data-reduce-motion="false" className="h-full overflow-hidden" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <GoogleAdsTag />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans h-full w-full overflow-hidden flex flex-col bg-base-200 text-base-content`}>
         <GeometricBackground />
@@ -112,7 +113,6 @@ export default function RootLayout({
         </main>
         <PerformanceHint />
         <Analytics />
-        <GoogleAdsTag />
       </body>
     </html>
   );
