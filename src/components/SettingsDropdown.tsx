@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LuSettings, LuSun, LuMoon, LuSparkles, LuMonitor } from "react-icons/lu";
+import { LuSettings, LuSun, LuMoon, LuSparkles, LuMonitor, LuCookie } from "react-icons/lu";
 import FpsSettingsDialog from "@/components/FpsSettingsDialog";
+import { COOKIE_SETTINGS_EVENT } from "@/components/CookieBanner";
+import { GOOGLE_ADS_ID } from "@/lib/googleAds";
 import { PRESETS, resolutionLabel, useFpsSettings } from "@/lib/useFpsSettings";
 
 export default function SettingsDropdown() {
@@ -119,6 +121,20 @@ export default function SettingsDropdown() {
               {resolutionLabel(graphics.resolution)} · {PRESETS.find((p) => p.value === graphics.preset)!.label}
             </span>
           </button>
+          {GOOGLE_ADS_ID && (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left text-sm hover:bg-base-content/5"
+              onClick={() => {
+                setOpen(false);
+                window.dispatchEvent(new Event(COOKIE_SETTINGS_EVENT));
+              }}
+            >
+              <LuCookie className="h-4 w-4 text-base-content/60" />
+              Cookies
+            </button>
+          )}
         </div>
       )}
       {graphicsOpen && <FpsSettingsDialog onClose={closeGraphics} />}
